@@ -211,7 +211,7 @@ function onKeyUp( event ) {
             restartMusic();
             break;
         case 32: // SPACE
-            console.log("amount: " + postProcess.rgbShiftPass.amount + " angle: " + postProcess.rgbShiftPass.angle);
+            pauseResumeMusic();
             break;
         case 49: // 1
             stats.showPanel(0);
