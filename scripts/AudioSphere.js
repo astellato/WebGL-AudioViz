@@ -8,8 +8,8 @@ import * as THREE from 'https://cdn.skypack.dev/three@0.129.0';
 //import { OrbitControls } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js';
 import Stats from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/libs/stats.module.js';
 
-import { isMobile } from './scripts/Utils.js';
-import { AudioHandler, AUDIOINPUTS } from './scripts/audio/AudioHandler.js';
+import { isMobile } from './Utils.js';
+import { AudioHandler, AUDIOINPUTS } from './audio/AudioHandler.js';
 import { PostProcessHandler } from './PostProcessHandler.js';
 import { BlobShader } from './shaders/BlobShader.js';
 import { StarFieldShader } from './shaders/StarFieldShader.js';
