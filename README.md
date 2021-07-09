@@ -6,7 +6,7 @@ Audio analysis is naive, no beat detection.  We measure the peaks of each smooth
 
 ## Usage
 
-Download repo and run.
+Download repo and open index.html in a browser.
 
 ## License
 
