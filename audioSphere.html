@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>aaSphere</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+    </head>
+	<body>
+		<body>
+            <div id="overlay">
+                <div id="overlayStartText">Works best with music playing and a direct audio input.</div>
+                <div id="overlayStartText">Please allow the use of your mic.</div>
+                <button id="startButton">USE LIVE SOUND</button>
+                <div id="overlayStartText">No mic?  No problem!</div>
+                <button id="defaultButton">PLAY DEFAULT MUSIC</button>
+                <div id="overlayStartText">Audio is Drift by <a href="https://creo.fanlink.to/drift">Creo</a></div>
+                <div id="overlayStartText">WARNING! Flashing imagery!</div>
+                
+            </div>
+            <div id="audio-debug-holder">
+                <div id="audio-debug-header">
+                    <div id="audio-debug-title">Audio Analyzer</div>
+                </div>
+
+                <div id="aaLabel1">Waveform</div>
+                <canvas id="audio-debug1" width="250" height="100"></canvas>
+                <div id="aaLabel2">Relative</div>
+                <canvas id="audio-debug2" width="250" height="100"></canvas>
+                <div id="aaLabel3">Raw/Peaks</div>
+                <canvas id="audio-debug3" width="250" height="100"></canvas>
+                
+                <div id="controls"></div>
+            </div>
+        <div id="container"></div>
+		<script type=module src="scripts/AudioSphere.js"></script>
+	</body>
+</html>
