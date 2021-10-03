@@ -119,7 +119,7 @@ function init() {
     postProcess.addSobelPass();
     postProcess.addUnrealBloomPass(0, 0, 0.9);
     postProcess.addRGBShiftPass(0, 0);
-    postProcess.addInvertPass();
+    //postProcess.addInvertPass();  // phew . . . too many effects for most comps :(
     postProcess.addAfterImagePass();
     postProcess.addFilmGrainPass(noiseMax, 0., 512., false);
 
@@ -335,7 +335,8 @@ function updateShaders(){
     blobUniforms.uPhase.value = uPhase;
 
     // post processing
-    postProcess.enableInvertPass(s > 0.98);
+    if(postProcess.invertPass)
+        postProcess.enableInvertPass(s > 0.98);
     postProcess.enableSobelPass(s > 0.9 && s < 0.98);
     postProcess.afterImagePass.uniforms[ 'damp' ].value = .02 + avg0 * 0.97;
     postProcess.unrealBloomPass.strength = avg4 * 0.25;

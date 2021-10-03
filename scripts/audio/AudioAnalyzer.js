@@ -37,7 +37,7 @@ class AudioAnalyzer {
 		this.slidingAverages = [];
 		this.totalSlidingAverage = new SlidingAverage(this.windowSize, 0.0);
 		this.totalPeak = 0.0;
-		this.peakDecay = 0.0001; //0.002
+		this.peakDecay = 0.001; //0.002 //0.0001
 		this.relativeDisplayCtx = null;
 		this.rawDisplayCtx = null;
 		this.waveformDisplayCtx = null;
