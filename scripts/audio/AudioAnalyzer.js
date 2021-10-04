@@ -36,8 +36,8 @@ class AudioAnalyzer {
 		this.windowSize = 10;
 		this.slidingAverages = [];
 		this.totalSlidingAverage = new SlidingAverage(this.windowSize, 0.0);
-		this.totalPeak = 0.0;
-		this.peakDecay = 0.001; //0.002 //0.0001
+		this.totalPeak = 0.1;
+		this.peakDecay = 0.01; //0.002 //0.0001 //0.0005
 		this.relativeDisplayCtx = null;
 		this.rawDisplayCtx = null;
 		this.waveformDisplayCtx = null;
@@ -59,7 +59,7 @@ class AudioAnalyzer {
 
 		// initialize peaks data
 		for(let j = 0; j < this.levelsCount; j++){
-			this.peaksData[j] = 0.15;
+			this.peaksData[j] = 0.1;
 		}
 
 		// initialize smoothed averages
@@ -101,7 +101,7 @@ class AudioAnalyzer {
 		}
     }
 
-    update(){
+    update(deltaTime){
         // GET RAW DATA
 		this.analyser.getByteFrequencyData(this.freqByteData); //<-- bar chart
 		this.analyser.getByteTimeDomainData(this.timeByteData); // <-- waveform
@@ -109,6 +109,7 @@ class AudioAnalyzer {
 		this.timeByteData.forEach((val, idx) => this.waveData[idx] = ((val - 128)/128));
 
 		// GENERATE DATA
+		let adjustedPeakDecay = this.peakDecay * deltaTime;
 		for(let i = 0; i < this.levelsCount; i++) {
 			let sum = 0;
 			for(let j = 0; j < this.levelBins; j++) {
@@ -116,7 +117,7 @@ class AudioAnalyzer {
 			}
 			let val = clamp(sum / this.levelBins/256, 0, 1);
 			this.binsData[i] = val;
-			this.peaksData[i] = (val > this.peaksData[i]) ? val : this.peaksData[i] - this.peakDecay;
+			this.peaksData[i] = clamp((val > this.peaksData[i]) ? val : this.peaksData[i] - adjustedPeakDecay, 0.1, 1);
 
 			let rel = checkIsNan(clamp(val/this.peaksData[i], 0, 1));
 			this.relativeData[i] = rel;
@@ -128,7 +129,7 @@ class AudioAnalyzer {
 		this.binsData.forEach((val) => sum += val);
 		this.rawTotalPower = checkIsNan(sum / this.levelsCount);
 		this.totalSlidingAverage.push(this.rawTotalPower);
-		this.totalPeak = (this.rawTotalPower > this.totalPeak) ? this.rawTotalPower : this.totalPeak - this.peakDecay;
+		this.totalPeak = clamp((this.rawTotalPower > this.totalPeak) ? this.rawTotalPower : this.totalPeak - adjustedPeakDecay, 0.1, 1);
 		this.relativeTotal = this.totalPeak > 0.0 ? checkIsNan(this.totalSlidingAverage.getAverage()/this.totalPeak) : 0.0;
 
 		if(this.isDebug){

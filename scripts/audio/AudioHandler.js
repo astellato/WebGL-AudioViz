@@ -41,8 +41,8 @@ class AudioHandler {
         this.analyzer = new AudioAnalyzer(this.audio, _debug, this.levelsCount, this.fftSize);
     }
 
-    update(){
-        this.analyzer.update();
+    update(deltaTime){
+        this.analyzer.update(deltaTime);
     }
 
     stopAudio(){

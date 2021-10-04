@@ -243,7 +243,7 @@ function animate() {
 function render() {
     stats.begin();
 
-    audioHandler.update();
+    audioHandler.update(deltaTime);
 
     if(isPlaying()){
         let displace = audioHandler.analyzer.getAverage(5) * deltaTime;
