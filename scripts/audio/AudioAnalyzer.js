@@ -3,6 +3,7 @@
 
 	Takes in wave and FFT data, smooths out the values in a sliding average.
 	Calculates peaks of sounds, returns normalized relative values between no sound and peak sound.
+	Very robust at handling different audio sources and gain.
 	Not the most perfect analysis but is performant and works well enough ¯\_(ツ)_/¯.
 
     Copyright © 2021 Anthony Stellato

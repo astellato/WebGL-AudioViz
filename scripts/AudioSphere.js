@@ -108,7 +108,6 @@ function init() {
     // const controls = new OrbitControls( camera, renderer.domElement );
 	// controls.screenSpacePanning = true;
 
-    //audioHandler = (isMobile()) ? new AudioHandler(AUDIOINPUTS.DEFAULT, debug, 6) : new AudioHandler(AUDIOINPUTS.MIC, debug, 6);
     audioHandler = new AudioHandler(audioType, debug, 6);
 
     setupScene();

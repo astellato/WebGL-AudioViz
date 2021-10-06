@@ -7,7 +7,6 @@
     Distortion based on Jaume Sanchez's (spite) article on displacement
         https://www.clicktorelease.com/blog/vertex-displacement-noise-3d-webgl-glsl-three-js/
 
-    Distortion based on 
     Copyright © 2021 Anthony Stellato
 */
 

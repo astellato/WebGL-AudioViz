@@ -42,14 +42,6 @@ a, button, input, select {
 	pointer-events: auto;
 }
 
-.dg.ac {
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	z-index: 2 !important; /* TODO Solve this in HTML */
-}
-
 #overlay {
 	position: absolute;
 	font-size: 16px;
