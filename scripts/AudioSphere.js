@@ -20,6 +20,8 @@ let postProcess;
 let background;
 let showOverlay = false;
 let debug = true;
+let platformMobile = isMobile();
+let showBackground = false;
 let clock = new THREE.Clock(true);
 let deltaTime;
 let tempVector3 = new THREE.Vector3();
@@ -134,7 +136,8 @@ function init() {
 
 function setupScene(){
     setupSphere();
-    if(!isMobile())
+    //if(!isMobile())
+    if(showBackground)
         setupBackground();
 }
 
@@ -181,14 +184,16 @@ function onWindowResize() {
     renderer.setSize( window.innerWidth, window.innerHeight );
     postProcess.setSize( window.innerWidth, window.innerHeight, window.devicePixelRatio );
 
-    if(!isMobile()){
+    //if(!isMobile()){
+    if(showBackground) {
         bgUniforms[ 'resolution' ].value.x = window.innerWidth * window.pixelRatio;
         bgUniforms[ 'resolution' ].value.y = window.innerHeight * window.pixelRatio;
     }
 }
 
 function onDoubleClick( event ){
-    if(isMobile()){
+    // if(isMobile()){
+    if(showBackground) {
         pauseResumeMusic();
     }
 
@@ -348,7 +353,8 @@ function updateShaders(){
     postProcess.rgbShiftPass.angle = rgbAngle;
     postProcess.filmPass.uniforms[ 'nIntensity' ].value = .1 + avg3*(noiseMax - .1);
     
-    if(!isMobile()){
+    // if(!isMobile()){
+    if(showBackground) {
         bgUniforms[ 'time' ].value += s * 0.2;
         bgUniforms[ 'strength' ].value = 0.15 * avg2;
     }
