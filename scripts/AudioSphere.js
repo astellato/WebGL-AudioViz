@@ -4,9 +4,9 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import * as THREE from 'https://cdn.skypack.dev/three@0.129.0';
-//import { OrbitControls } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js';
-import Stats from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/libs/stats.module.js';
+import * as THREE from '../vendor/three/build/three.module.js';
+//import { OrbitControls } from '../vendor/three/examples/jsm/controls/OrbitControls.js';
+import Stats from '../vendor/three/examples/jsm/libs/stats.module.js';
 
 import { isMobile } from './Utils.js';
 import { AudioHandler, AUDIOINPUTS } from './audio/AudioHandler.js';

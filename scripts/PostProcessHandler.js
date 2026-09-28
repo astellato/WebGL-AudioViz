@@ -4,22 +4,22 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import * as THREE from 'https://cdn.skypack.dev/three@0.129.0';
+import * as THREE from '../vendor/three/build/three.module.js';
 
-import { EffectComposer } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/ShaderPass.js';
+import { EffectComposer } from '../vendor/three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '../vendor/three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from '../vendor/three/examples/jsm/postprocessing/ShaderPass.js';
 
 import { InvertPass } from './postprocessing/InvertPass.js';
 import { RGBShiftPass } from './postprocessing/RGBShiftPass.js';
-import { AfterimagePass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/AfterimagePass.js';
-import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GlitchPass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/GlitchPass.js';
-import { OutlinePass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/OutlinePass.js';
-import { LuminosityShader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/shaders/LuminosityShader.js';
-import { SobelOperatorShader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/shaders/SobelOperatorShader.js';
-import { FilmPass } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/FilmPass.js';
-import { FXAAShader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/shaders/FXAAShader.js';
+import { AfterimagePass } from '../vendor/three/examples/jsm/postprocessing/AfterimagePass.js';
+import { UnrealBloomPass } from '../vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GlitchPass } from '../vendor/three/examples/jsm/postprocessing/GlitchPass.js';
+import { OutlinePass } from '../vendor/three/examples/jsm/postprocessing/OutlinePass.js';
+import { LuminosityShader } from '../vendor/three/examples/jsm/shaders/LuminosityShader.js';
+import { SobelOperatorShader } from '../vendor/three/examples/jsm/shaders/SobelOperatorShader.js';
+import { FilmPass } from '../vendor/three/examples/jsm/postprocessing/FilmPass.js';
+import { FXAAShader } from '../vendor/three/examples/jsm/shaders/FXAAShader.js';
 
 class PostProcessHandler {
     constructor(_renderer, _width, _height, _pixelRatio){

@@ -6,7 +6,7 @@
     TODO: Add file drop operations
 */
 
-import * as THREE from 'https://cdn.skypack.dev/three@0.129.0';
+import * as THREE from '../../vendor/three/build/three.module.js';
 import { AudioAnalyzer } from './AudioAnalyzer.js';
 
 const DEFAULT_AUDIO_FILE = './audio/1048360_Creo---Drift.mp3';
@@ -63,31 +63,23 @@ class AudioHandler {
     }
 
     useMic(){
-        if (!navigator.getUserMedia){
-            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+        if (!navigator.mediaDevices?.getUserMedia){
+            alert('getUserMedia not supported in this browser.');
+            return;
         }
 
-        if (navigator.getUserMedia){
-
-            navigator.getUserMedia({"audio": {
-                "mandatory": {
-                    "googEchoCancellation": "false",
-                    "googAutoGainControl": "false",
-                    "googNoiseSuppression": "false",
-                    "googHighpassFilter": "false"
-                },
-                "optional": []
-                }
-            }, 
-                function(stream) {
-                    this.startMicrophone(stream);
-                }.bind(this),
-                function(e) {
-                    alert('Error capturing audio.');
-                }.bind(this)
-            );
-
-        } else { alert('getUserMedia not supported in this browser.'); }
+        navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: false,
+                autoGainControl: false,
+                noiseSuppression: false
+            }
+        }).then((stream) => {
+            this.startMicrophone(stream);
+        }).catch((error) => {
+            console.error('Error capturing audio.', error);
+            alert('Error capturing audio.');
+        });
     }
 
     startMicrophone(stream){
