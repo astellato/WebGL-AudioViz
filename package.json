@@ -1,0 +1,14 @@
+{
+  "name": "astellato-issue-1-cors-policy-issue-99ce0f",
+  "version": "1.0.0",
+  "description": "AudioViz experiments for the web browser.  Made with [three.js](https://github.com/mrdoob/three.js/).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "three": "^0.129.0"
+  }
+}

@@ -7,8 +7,8 @@
 import {
 	ShaderMaterial,
 	UniformsUtils
-} from 'https://cdn.skypack.dev/three@0.129.0';
-import { Pass, FullScreenQuad } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/postprocessing/Pass.js';
+} from '../../vendor/three/build/three.module.js';
+import { Pass, FullScreenQuad } from '../../vendor/three/examples/jsm/postprocessing/Pass.js';
 import { InvertShader } from '../shaders/InvertShader.js';
 
 class InvertPass extends Pass {

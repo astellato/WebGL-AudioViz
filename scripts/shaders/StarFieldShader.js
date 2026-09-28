@@ -7,7 +7,7 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import { Vector2 }from 'https://cdn.skypack.dev/three@0.129.0';
+import { Vector2 }from '../../vendor/three/build/three.module.js';
 
 const StarFieldShader = {
     uniforms: {
