@@ -10,9 +10,20 @@
     pass, same AfterimageShader math and damp API, only the two private
     history targets are recreated as UnsignedByte.
 
+    The feedback blend is additionally clamped to a finite HDR ceiling.
+    The stock shader's max() latch holds +Inf forever (Inf * damp == Inf),
+    so a single overbright pixel upstream (e.g. the old starfield 1/d
+    singularity) froze into a permanent white/gray rectangle. Finite values
+    at or below the ceiling follow the stock math exactly.
+
     If a future three version fixes the underlying driver issue, delete this
     file and import AfterimagePass from 'three/addons' again.
 */
+
+// Feedback values above this never occur in legitimate content (post star
+// fix, star cores peak ~5); anything larger is an Inf/NaN-class glitch that
+// must not be allowed to latch in the history buffers.
+const FEEDBACK_MAX = 8.0;
 
 import { NearestFilter, UnsignedByteType, WebGLRenderTarget } from 'three';
 import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
@@ -47,6 +58,25 @@ class StableAfterimagePass extends AfterimagePass {
         // never be depth-tested regardless of target options.
         this.compFsMaterial.depthTest = false;
         this.compFsMaterial.depthWrite = false;
+
+        // Clamp both feedback inputs to a finite ceiling. The trails math
+        // below is otherwise identical to AfterimageShader: max() of the new
+        // frame and the damped history, with the 0.1 kill threshold.
+        this.compFsMaterial.fragmentShader = /* glsl */`
+            uniform float damp;
+            uniform sampler2D tOld;
+            uniform sampler2D tNew;
+            varying vec2 vUv;
+            vec4 when_gt(vec4 x, float y) {
+                return max(sign(x - y), 0.0);
+            }
+            void main() {
+                vec4 texelOld = min(texture2D(tOld, vUv), vec4(${FEEDBACK_MAX.toFixed(1)}));
+                vec4 texelNew = min(texture2D(tNew, vUv), vec4(${FEEDBACK_MAX.toFixed(1)}));
+                texelOld *= damp * when_gt(texelOld, 0.1);
+                gl_FragColor = max(texelNew, texelOld);
+            }`;
+        this.compFsMaterial.needsUpdate = true;
     }
 }
 

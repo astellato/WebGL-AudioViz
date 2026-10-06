@@ -56,10 +56,17 @@ const StarFieldShader = {
         float Star(vec2 uv)
         {
             float d = length(uv);
-            float m = 0.05/d;
-            
-            m *= smoothstep(0.2, 0., d);
-            
+            // Guard the 1/d singularity: an exact center hit (d == 0) emits
+            // +Inf, which UnrealBloom smears across large axis-aligned areas
+            // and the afterimage max() latch holds forever (Inf * damp == Inf)
+            // as a flat white/gray rectangle. Cap the core instead; the curve
+            // for d >= 0.01 is unchanged.
+            float m = min(0.05 / max(d, 0.01), 5.0);
+
+            // NOTE: smoothstep(edge0, edge1) with edge0 > edge1 is undefined
+            // behavior — write the inverted form explicitly.
+            m *= 1.0 - smoothstep(0.0, 0.2, d);
+
             return m;
         }
 
@@ -108,7 +115,7 @@ const StarFieldShader = {
             {
                 float depth = fract(i+t);
                 float scale = mix(5., 0.1, depth);
-                float fade = depth * smoothstep(1., 0.9, depth);
+                float fade = depth * (1.0 - smoothstep(0.9, 1.0, depth));
                 col += StarLayer(uv*scale+i*453.2)*fade;
             }
             
