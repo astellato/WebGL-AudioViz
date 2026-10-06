@@ -4,19 +4,20 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import * as THREE from '../vendor/three/build/three.module.js';
+import * as THREE from 'three';
 
-import { EffectComposer } from '../vendor/three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from '../vendor/three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from '../vendor/three/examples/jsm/postprocessing/ShaderPass.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 import { RGBShiftShader } from './shaders/RGBShiftShader.js';
-import { AfterimagePass } from '../vendor/three/examples/jsm/postprocessing/AfterimagePass.js';
-import { UnrealBloomPass } from '../vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { LuminosityShader } from '../vendor/three/examples/jsm/shaders/LuminosityShader.js';
-import { SobelOperatorShader } from '../vendor/three/examples/jsm/shaders/SobelOperatorShader.js';
-import { FilmPass } from '../vendor/three/examples/jsm/postprocessing/FilmPass.js';
-import { FXAAShader } from '../vendor/three/examples/jsm/shaders/FXAAShader.js';
+import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { LuminosityShader } from 'three/addons/shaders/LuminosityShader.js';
+import { SobelOperatorShader } from 'three/addons/shaders/SobelOperatorShader.js';
+import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 class PostProcessHandler {
     constructor(_renderer, _width, _height, _pixelRatio){
@@ -95,9 +96,14 @@ class PostProcessHandler {
         this.composer.addPass(this.unrealBloomPass);
     }
 
-    addFilmGrainPass(noiseIntensity, scanlinesIntensity, scanlinesCount, grayscale){
-        this.filmPass = new FilmPass(noiseIntensity, scanlinesIntensity, scanlinesCount, grayscale);
+    addFilmGrainPass(noiseIntensity, grayscale = false){
+        this.filmPass = new FilmPass(noiseIntensity, grayscale);
         this.composer.addPass(this.filmPass);
+    }
+
+    addOutputPass(){
+        this.outputPass = new OutputPass();
+        this.composer.addPass(this.outputPass);
     }
 
     addFXAAPass(){

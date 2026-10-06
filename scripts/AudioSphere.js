@@ -4,9 +4,8 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import * as THREE from '../vendor/three/build/three.module.js';
-//import { OrbitControls } from '../vendor/three/examples/jsm/controls/OrbitControls.js';
-import Stats from '../vendor/three/examples/jsm/libs/stats.module.js';
+import * as THREE from 'three';
+import Stats from 'three/addons/libs/stats.module.js';
 
 import { isMobile } from './Utils.js';
 import { AudioHandler, AUDIOINPUTS } from './audio/AudioHandler.js';
@@ -132,7 +131,9 @@ class AudioSphereApp {
         this.postProcess.addRGBShiftPass(0, 0);
         this.postProcess.addAfterImagePass();
         this.postProcess.addFXAAPass();     // smooths geometry edges now that MSAA is off
-        this.postProcess.addFilmGrainPass(NOISE_MAX, 0., 512., false);
+        this.postProcess.addFilmGrainPass(NOISE_MAX, false);
+        // sRGB conversion + tone mapping must come last in modern three
+        this.postProcess.addOutputPass();
 
         document.addEventListener( 'dblclick', this.onDoubleClick );
         window.addEventListener( 'resize', this.onWindowResize );
@@ -345,7 +346,7 @@ class AudioSphereApp {
         rgbAngle = rgbAngle % Math.PI;
 
         this.postProcess.rgbShiftPass.uniforms[ 'angle' ].value = rgbAngle;
-        this.postProcess.filmPass.uniforms[ 'nIntensity' ].value = .1 + avg3*(NOISE_MAX - .1);
+        this.postProcess.filmPass.uniforms[ 'intensity' ].value = .1 + avg3*(NOISE_MAX - .1);
 
         // if(!isMobile()){
         if(this.showBackground) {

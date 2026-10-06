@@ -6,7 +6,7 @@
     TODO: Add file drop operations
 */
 
-import * as THREE from '../../vendor/three/build/three.module.js';
+import * as THREE from 'three';
 import { AudioAnalyzer } from './AudioAnalyzer.js';
 
 const DEFAULT_AUDIO_FILE = './audio/1048360_Creo---Drift.mp3';
