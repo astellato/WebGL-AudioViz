@@ -134,6 +134,10 @@ class AudioSphereApp {
         this.postProcess.addFilmGrainPass(NOISE_MAX, false);
         // sRGB conversion + tone mapping must come last in modern three
         this.postProcess.addOutputPass();
+        // passes added after the handler's constructor never saw setSize():
+        // push the physical size through every target once (notably the
+        // afterimage history buffers, which start out window-sized)
+        this.postProcess.setSize(window.innerWidth, window.innerHeight, this.getPixelRatio());
 
         document.addEventListener( 'dblclick', this.onDoubleClick );
         window.addEventListener( 'resize', this.onWindowResize );

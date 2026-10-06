@@ -11,7 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 import { RGBShiftShader } from './shaders/RGBShiftShader.js';
-import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
+import { StableAfterimagePass } from './StableAfterimagePass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { LuminosityShader } from 'three/addons/shaders/LuminosityShader.js';
 import { SobelOperatorShader } from 'three/addons/shaders/SobelOperatorShader.js';
@@ -87,7 +87,10 @@ class PostProcessHandler {
     }
 
     addAfterImagePass(){
-        this.afterImagePass = new AfterimagePass();
+        // Stock r186 AfterimagePass uses HalfFloat history buffers whose
+        // feedback loop decays to black on real GPU drivers; the LDR
+        // subclass keeps identical trails math with stable buffers.
+        this.afterImagePass = new StableAfterimagePass();
         this.composer.addPass(this.afterImagePass);
     }
 
