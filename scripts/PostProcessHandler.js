@@ -10,12 +10,9 @@ import { EffectComposer } from '../vendor/three/examples/jsm/postprocessing/Effe
 import { RenderPass } from '../vendor/three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from '../vendor/three/examples/jsm/postprocessing/ShaderPass.js';
 
-import { InvertPass } from './postprocessing/InvertPass.js';
-import { RGBShiftPass } from './postprocessing/RGBShiftPass.js';
+import { RGBShiftShader } from './shaders/RGBShiftShader.js';
 import { AfterimagePass } from '../vendor/three/examples/jsm/postprocessing/AfterimagePass.js';
 import { UnrealBloomPass } from '../vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GlitchPass } from '../vendor/three/examples/jsm/postprocessing/GlitchPass.js';
-import { OutlinePass } from '../vendor/three/examples/jsm/postprocessing/OutlinePass.js';
 import { LuminosityShader } from '../vendor/three/examples/jsm/shaders/LuminosityShader.js';
 import { SobelOperatorShader } from '../vendor/three/examples/jsm/shaders/SobelOperatorShader.js';
 import { FilmPass } from '../vendor/three/examples/jsm/postprocessing/FilmPass.js';
@@ -65,17 +62,11 @@ class PostProcessHandler {
         this.composer.addPass(this.renderPass);
     }
 
-    addInvertPass(){
-        this.invertPass = new InvertPass();
-        this.composer.addPass(this.invertPass);
-    }
-
-    enableInvertPass(_enabled){
-        this.invertPass.enabled = _enabled;
-    }
-
     addRGBShiftPass(_amount, _angle){
-        this.rgbShiftPass = new RGBShiftPass(_amount, _angle);
+        // the old RGBShiftPass wrapper duplicated ShaderPass exactly, so use it directly
+        this.rgbShiftPass = new ShaderPass(RGBShiftShader);
+        this.rgbShiftPass.uniforms[ 'amount' ].value = _amount;
+        this.rgbShiftPass.uniforms[ 'angle' ].value = _angle;
         this.composer.addPass(this.rgbShiftPass);
     }
 
@@ -92,11 +83,6 @@ class PostProcessHandler {
     enableSobelPass(_enabled){
         this.grayScalePass.enabled = _enabled;
         this.sobelPass.enabled = _enabled;
-    }
-
-    addOutlinePass(){
-        this.outlinePass = new OutlinePass(new THREE.Vector2(this.width, this.height), this.scene, this.camera);
-        this.composer.addPass(this.outlinePass);
     }
 
     addAfterImagePass(){

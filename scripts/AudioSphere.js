@@ -129,7 +129,6 @@ function init() {
     postProcess.addSobelPass();
     postProcess.addUnrealBloomPass(0, 0, 0.9);
     postProcess.addRGBShiftPass(0, 0);
-    //postProcess.addInvertPass();  // phew . . . too many effects for most comps :(
     postProcess.addAfterImagePass();
     postProcess.addFXAAPass();     // smooths geometry edges now that MSAA is off
     postProcess.addFilmGrainPass(noiseMax, 0., 512., false);
@@ -304,9 +303,9 @@ function updateShaders(displace){
     uBrightness.y = uBrightnessMin.y + uBrightnessMult.y * avg1;
     uBrightness.z = uBrightnessMin.z + uBrightnessMult.z * avg0;
 
-    uContrast.x = uContrastMin.x + uContrastMult.x + uContrastMult.x * avg2;
-    uContrast.y = uContrastMin.y + uContrastMult.y + uContrastMult.y * avg5;
-    uContrast.z = uContrastMin.z + uContrastMult.z + uContrastMult.z * avg4;
+    uContrast.x = uContrastMin.x + uContrastMult.x * avg2;
+    uContrast.y = uContrastMin.y + uContrastMult.y * avg5;
+    uContrast.z = uContrastMin.z + uContrastMult.z * avg4;
 
     uOscilation.x = uOscilationMin.x + uOscilationMult.x * avg0;
     uOscilation.y = uOscilationMin.y + uOscilationMult.y * avg3;
@@ -333,21 +332,19 @@ function updateShaders(displace){
     blobUniforms.uPhase.value = uPhase;
 
     // post processing
-    if(postProcess.invertPass)
-        postProcess.enableInvertPass(s > 0.98);
     postProcess.enableSobelPass(s > 0.9 && s < 0.98);
     postProcess.afterImagePass.uniforms[ 'damp' ].value = .02 + avg0 * 0.97;
     const bloomStrength = avg4 * 0.25;
     postProcess.unrealBloomPass.strength = bloomStrength;
     // skip the whole bloom chain while its contribution would be invisible anyway
     postProcess.unrealBloomPass.enabled = bloomStrength > 0.01;
-    postProcess.rgbShiftPass.amount = 0.006 * avg1;
-    let rgbAngle = postProcess.rgbShiftPass.angle;
+    postProcess.rgbShiftPass.uniforms[ 'amount' ].value = 0.006 * avg1;
+    let rgbAngle = postProcess.rgbShiftPass.uniforms[ 'angle' ].value;
 
     rgbAngle += avg0 * 0.02;
     rgbAngle = rgbAngle % Math.PI;
-    
-    postProcess.rgbShiftPass.angle = rgbAngle;
+
+    postProcess.rgbShiftPass.uniforms[ 'angle' ].value = rgbAngle;
     postProcess.filmPass.uniforms[ 'nIntensity' ].value = .1 + avg3*(noiseMax - .1);
     
     // if(!isMobile()){
