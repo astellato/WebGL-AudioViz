@@ -24,11 +24,14 @@ let platformMobile = isMobile();
 let showBackground = false;
 let clock = new THREE.Clock(true);
 let deltaTime;
-let tempVector3 = new THREE.Vector3();
-let sphereGeometry, spherePositionAttribute;
-let spherePositions = [];
+let elapsedTime = 0;
 let sphereMesh;
 let audioType;
+
+// tuning constants
+const displaceStrength = 20; // sphere radial displacement, pushed to the GPU via uDisplace
+const maxDeltaTime = 0.05;   // clamp frame gaps (tab refocus, GC stalls) to keep motion stable
+const maxPixelRatio = platformMobile ? 1.5 : 2; // cap render resolution on high-DPI screens
 
 let uSpeed = 0.3;
 let uNoiseStrength = 0.12;
@@ -87,10 +90,12 @@ function init() {
 
     container = document.getElementById( 'container' );
 
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    // MSAA doesn't apply to EffectComposer's render targets in r129, so antialiasing
+    // is handled by an FXAA pass instead (added below with the post processing chain)
+    renderer = new THREE.WebGLRenderer( { antialias: false } );
     renderer.setClearColor( 0x000000 );
-    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setPixelRatio( getPixelRatio() );
+    renderer.setSize( window.innerWidth, window.innerHeight );
     container.appendChild( renderer.domElement );
 
     stats = new Stats();
@@ -114,7 +119,7 @@ function init() {
 
     setupScene();
 
-    postProcess = new PostProcessHandler(renderer, window.innerWidth, window.innerHeight, window.devicePixelRatio);
+    postProcess = new PostProcessHandler(renderer, window.innerWidth, window.innerHeight, getPixelRatio());
     postProcess.addRenderPass(scene, camera);
 
     postProcess.addSobelPass();
@@ -122,6 +127,7 @@ function init() {
     postProcess.addRGBShiftPass(0, 0);
     //postProcess.addInvertPass();  // phew . . . too many effects for most comps :(
     postProcess.addAfterImagePass();
+    postProcess.addFXAAPass();     // smooths geometry edges now that MSAA is off
     postProcess.addFilmGrainPass(noiseMax, 0., 512., false);
 
     document.addEventListener( 'dblclick', onDoubleClick );
@@ -142,10 +148,8 @@ function setupScene(){
 }
 
 function setupSphere(){
-    let sphereRes = 128;
-    sphereGeometry = new THREE.SphereBufferGeometry(0.25, sphereRes, sphereRes);
-    spherePositionAttribute = sphereGeometry.getAttribute('position');
-    spherePositionAttribute.array.forEach((pos) => spherePositions.push(pos));
+    const sphereRes = 128;
+    const sphereGeometry = new THREE.SphereBufferGeometry(0.25, sphereRes, sphereRes);
 
     blobUniforms = THREE.UniformsUtils.clone( BlobShader.uniforms );
     
@@ -166,7 +170,7 @@ function setupSphere(){
 
 function setupBackground(){
     bgUniforms = THREE.UniformsUtils.clone( StarFieldShader.uniforms );
-    bgUniforms[ 'resolution' ].value = new THREE.Vector2(window.innerWidth * window.pixelRatio, window.innerHeight * window.pixelRatio);
+    bgUniforms[ 'resolution' ].value = new THREE.Vector2(window.innerWidth * getPixelRatio(), window.innerHeight * getPixelRatio());
     const material = new THREE.ShaderMaterial({
         vertexShader: StarFieldShader.vertexShader,
         fragmentShader: StarFieldShader.fragmentShader,
@@ -178,16 +182,25 @@ function setupBackground(){
     scene.add(background);
 }
 
+function getPixelRatio(){
+    return Math.min(window.devicePixelRatio || 1, maxPixelRatio);
+}
+
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const pixelRatio = getPixelRatio();
+
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    postProcess.setSize( window.innerWidth, window.innerHeight, window.devicePixelRatio );
+    renderer.setPixelRatio( pixelRatio );
+    renderer.setSize( width, height );
+    postProcess.setSize( width, height, pixelRatio );
 
     //if(!isMobile()){
     if(showBackground) {
-        bgUniforms[ 'resolution' ].value.x = window.innerWidth * window.pixelRatio;
-        bgUniforms[ 'resolution' ].value.y = window.innerHeight * window.pixelRatio;
+        bgUniforms[ 'resolution' ].value.x = width * pixelRatio;
+        bgUniforms[ 'resolution' ].value.y = height * pixelRatio;
     }
 }
 
@@ -233,7 +246,7 @@ function onKeyUp( event ) {
 }
 
 function animate() {
-    deltaTime = clock.getDelta();
+    deltaTime = Math.min(clock.getDelta(), maxDeltaTime);
 
     requestAnimationFrame( animate );
 
@@ -247,13 +260,17 @@ function animate() {
 function render() {
     stats.begin();
 
+    elapsedTime += deltaTime;
+
     audioHandler.update(deltaTime);
 
     if(isPlaying()){
-        let displace = audioHandler.analyzer.getAverage(5) * deltaTime;
-        let rotate = audioHandler.analyzer.getRelativeTotal() * deltaTime * 2.0;
-        updateSphere(displace, rotate);
-        updateShaders(deltaTime);
+        // displacement and rotation are cheap here: the actual vertex displacement
+        // happens in the shader via uDisplace, only the mesh rotation touches the CPU
+        const displace = displaceStrength * audioHandler.analyzer.getAverage(5) * deltaTime;
+        const rotate = audioHandler.analyzer.getRelativeTotal() * deltaTime * 2.0;
+        sphereMesh.rotateOnWorldAxis(worldAxisUp, rotate);
+        updateShaders(displace);
     }
 
     //renderer.render( scene, camera );
@@ -262,31 +279,7 @@ function render() {
     stats.end();
 }
 
-function updateSphere(displace, rotate){
-    const displaceStrength = 20; //50
-    let idx = 0;
-    let dir = new THREE.Vector3();
-    for (let i = 0; i < spherePositionAttribute.array.length; i += 3) {
-        // get original position
-        tempVector3.fromArray(spherePositions, i);
-        // get normal
-        dir.copy(tempVector3).normalize();
-        // move along normal (if at origin)
-        tempVector3.add(dir.multiplyScalar(displaceStrength * displace) );
-        // reupdate position
-        tempVector3.toArray(spherePositionAttribute.array, i);
-        // update every other triangle
-        idx += 1;
-        if(idx > 9){
-            i += 9;
-            idx = 0;
-        }
-    }
-    sphereMesh.geometry.attributes.position.needsUpdate = true;
-    sphereMesh.rotateOnWorldAxis(worldAxisUp, rotate);
-}
-
-function updateShaders(){
+function updateShaders(displace){
 
     let avg0 = audioHandler.analyzer.getAverage(0);
     let avg1 = audioHandler.analyzer.getAverage(1);
@@ -324,7 +317,8 @@ function updateShaders(){
     uPhase.z = uPhaseMin.z + uPhaseMult.z * avg2;
 
     // blob uniforms
-    blobUniforms.uTime.value = deltaTime;
+    blobUniforms.uTime.value = elapsedTime;
+    blobUniforms.uDisplace.value = displace;
     blobUniforms.uSpeed.value = uSpeed;
     blobUniforms.uNoiseStrength.value = uNoiseStrength;
     blobUniforms.uNoiseDensity.value = uNoiseDensity;
@@ -343,7 +337,10 @@ function updateShaders(){
         postProcess.enableInvertPass(s > 0.98);
     postProcess.enableSobelPass(s > 0.9 && s < 0.98);
     postProcess.afterImagePass.uniforms[ 'damp' ].value = .02 + avg0 * 0.97;
-    postProcess.unrealBloomPass.strength = avg4 * 0.25;
+    const bloomStrength = avg4 * 0.25;
+    postProcess.unrealBloomPass.strength = bloomStrength;
+    // skip the whole bloom chain while its contribution would be invisible anyway
+    postProcess.unrealBloomPass.enabled = bloomStrength > 0.01;
     postProcess.rgbShiftPass.amount = 0.006 * avg1;
     let rgbAngle = postProcess.rgbShiftPass.angle;
 
@@ -382,11 +379,13 @@ function showStats(){
 
 function showDebugDraw(){
     document.getElementById( 'audio-debug-holder' ).style.display = 'block';
+    audioHandler.analyzer.setDrawEnabled(true);
     showStats();
 }
 
 function hideDebugDraw(){
     document.getElementById( 'audio-debug-holder' ).style.display = 'none';
+    audioHandler.analyzer.setDrawEnabled(false);
     hideStats();
 }
 

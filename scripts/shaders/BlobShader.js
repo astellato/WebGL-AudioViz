@@ -22,6 +22,7 @@ const BlobShader = {
         uAmp: { value: 6 },
         uHue: { value: 0.75 },
         uOffset: { value: 0.15 },
+        uDisplace: { value: 0 },
         uAlpha: { value: 1 },
         uBrightness: { value: new Vector3(0.5, 0.5, 0.4) },
         uContrast: { value: new Vector3(0.2, 0.4, 0.2) },
@@ -41,6 +42,7 @@ const BlobShader = {
         uniform float uFreq;
         uniform float uAmp;
         uniform float uOffset;
+        uniform float uDisplace;
 
         //
         // GLSL textureless classic 3D noise "cnoise",
@@ -284,7 +286,8 @@ const BlobShader = {
             //float distortion = pnoise((normal + t) * uNoiseDensity, vec3(10.0)) * uNoiseStrength;
             float distortion = pnoise((normal) * uNoiseDensity, vec3(2.*PI)) * uNoiseStrength;
 
-            vec3 pos = position + (normal * distortion);
+            // uniform displacement along the normal, driven by audio (replaces CPU deformation)
+            vec3 pos = position + (normal * (distortion + uDisplace));
 
             float angle = sin(uv.y * uFreq + t) * uAmp;
             pos = rotateY(pos, angle);

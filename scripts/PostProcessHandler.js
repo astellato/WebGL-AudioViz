@@ -36,11 +36,21 @@ class PostProcessHandler {
         this.width  = _width;
         this.height = _height;
         this.pixelRatio = _pixelRatio;
+        this.composer.setPixelRatio(this.pixelRatio);
         this.composer.setSize(this.width, this.height);
 
+        const physicalWidth = this.width * this.pixelRatio;
+        const physicalHeight = this.height * this.pixelRatio;
+
         if(this.sobelPass){
-            this.sobelPass.uniforms[ 'resolution' ].value.x = this.width * this.pixelRatio;
-            this.sobelPass.uniforms[ 'resolution' ].value.y = this.height * this.pixelRatio;
+            this.sobelPass.uniforms[ 'resolution' ].value.x = physicalWidth;
+            this.sobelPass.uniforms[ 'resolution' ].value.y = physicalHeight;
+        }
+
+        if(this.fxaaPass){
+            // FXAA expects the reciprocal of the physical resolution
+            this.fxaaPass.uniforms[ 'resolution' ].value.x = 1 / physicalWidth;
+            this.fxaaPass.uniforms[ 'resolution' ].value.y = 1 / physicalHeight;
         }
     }
 
@@ -107,6 +117,9 @@ class PostProcessHandler {
     addFXAAPass(){
         this.fxaaPass = new ShaderPass( FXAAShader );
         this.composer.addPass(this.fxaaPass);
+        // passes are added after the constructor's setSize(), so wire it up here too
+        this.fxaaPass.uniforms[ 'resolution' ].value.x = 1 / (this.width * this.pixelRatio);
+        this.fxaaPass.uniforms[ 'resolution' ].value.y = 1 / (this.height * this.pixelRatio);
     }
 }
 

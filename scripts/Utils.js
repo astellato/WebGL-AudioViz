@@ -5,11 +5,12 @@
 */
 
 function isMobile(){
-    return /(iPad|iPhone|iPod|Android|webOS|BlackBerry|Windows Phone)/g.test( navigator.userAgent );
+    // NOTE: no /g flag here - global regexes are stateful across .test() calls
+    return /(iPad|iPhone|iPod|Android|webOS|BlackBerry|Windows Phone)/i.test( navigator.userAgent );
 }
 
 function isIOS(){
-    return /(iPad|iPhone|iPod)/g.test( navigator.userAgent );
+    return /(iPad|iPhone|iPod)/i.test( navigator.userAgent );
 }
 
 const clamp = (num, min, max) => {
