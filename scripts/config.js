@@ -5,7 +5,7 @@
     (uniform values, scene handles, timing) lives on AudioSphereApp.
 */
 
-import { Vector3 } from '../vendor/three/build/three.module.js';
+import { Vector3 } from 'three';
 
 export const FFT_SIZE = 512;
 export const AUDIO_LEVELS = 6;

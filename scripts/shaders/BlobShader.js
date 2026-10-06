@@ -10,7 +10,7 @@
     Copyright © 2021 Anthony Stellato
 */
 
-import { Vector3 }from '../../vendor/three/build/three.module.js';
+import { Vector3 } from 'three';
 
 const BlobShader = {
     uniforms: {
