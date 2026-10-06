@@ -21,7 +21,8 @@ let background;
 let showOverlay = false;
 let debug = true;
 let platformMobile = isMobile();
-let showBackground = false;
+// Starfield background is desktop-only: the 5-layer shader is too heavy for mobile GPUs
+let showBackground = !platformMobile;
 let clock = new THREE.Clock(true);
 let deltaTime;
 let elapsedTime = 0;
