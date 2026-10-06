@@ -14,7 +14,7 @@
     file and import AfterimagePass from 'three/addons' again.
 */
 
-import { UnsignedByteType, WebGLRenderTarget } from 'three';
+import { NearestFilter, UnsignedByteType, WebGLRenderTarget } from 'three';
 import { AfterimagePass } from 'three/addons/postprocessing/AfterimagePass.js';
 
 class StableAfterimagePass extends AfterimagePass {
@@ -29,9 +29,24 @@ class StableAfterimagePass extends AfterimagePass {
         this._textureComp.dispose();
         this._textureOld.dispose();
 
-        const options = { type: UnsignedByteType };
+        // Match the stock pass options exactly except for the type: no depth
+        // buffer and Nearest magnification. A depth buffer here is harmful:
+        // the feedback render never clears depth and the comp material leaves
+        // depthTest enabled, so stale depth culls fragments of the fullscreen
+        // quad and leaves uninitialized (white) tiles — large axis-aligned
+        // rectangles that get worse at high resolutions.
+        const options = {
+            magFilter: NearestFilter,
+            type: UnsignedByteType,
+            depthBuffer: false,
+        };
         this._textureComp = new WebGLRenderTarget(width, height, options);
         this._textureOld = new WebGLRenderTarget(width, height, options);
+
+        // Belt and braces: the feedback blend is a fullscreen quad, it must
+        // never be depth-tested regardless of target options.
+        this.compFsMaterial.depthTest = false;
+        this.compFsMaterial.depthWrite = false;
     }
 }
 
