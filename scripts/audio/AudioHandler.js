@@ -74,10 +74,17 @@ class AudioHandler {
     }
 
     restartAudio(){
+        // Only the default (buffer) input has playback control; mic input is
+        // a live stream and intentionally left alone here, as before.
+        if(this.currentInput !== AUDIOINPUTS.DEFAULT || !this.isAudioReady){
+            return;
+        }
         if(this.audio.isPlaying){
             this.audio.stop();
-            this.audio.play();
         }
+        // (Re)start from the top. With looping enabled the track normally
+        // never ends; this also recovers playback if it ever does stop.
+        this.audio.play();
     }
 
     pauseResumeAudio(){
@@ -144,6 +151,9 @@ class AudioHandler {
     }
 
     loadDefaultAudio(){
+        // The visualizer is meant to run indefinitely; loop the track so the
+        // render loop (gated on isPlaying) never stalls at the end of the file.
+        this.audio.setLoop(true);
         this.loadMP3(DEFAULT_AUDIO_FILE);
     }
 
