@@ -116,7 +116,10 @@ function init() {
     // const controls = new OrbitControls( camera, renderer.domElement );
 	// controls.screenSpacePanning = true;
 
-    audioHandler = new AudioHandler(audioType, debug, 6);
+    audioHandler = new AudioHandler(audioType, debug, audioLevels, fftSize);
+    // init() runs synchronously inside the button click, so this unlocks audio
+    // under the browser autoplay policy
+    audioHandler.resumeAudioContext();
 
     setupScene();
 
@@ -133,7 +136,6 @@ function init() {
 
     document.addEventListener( 'dblclick', onDoubleClick );
     window.addEventListener( 'resize', onWindowResize );
-    window.addEventListener( 'keydown', onKeyDown );
     window.addEventListener( 'keyup', onKeyUp );
 
     animate();
@@ -150,7 +152,7 @@ function setupScene(){
 
 function setupSphere(){
     const sphereRes = 128;
-    const sphereGeometry = new THREE.SphereBufferGeometry(0.25, sphereRes, sphereRes);
+    const sphereGeometry = new THREE.SphereGeometry(0.25, sphereRes, sphereRes);
 
     blobUniforms = THREE.UniformsUtils.clone( BlobShader.uniforms );
     
@@ -213,34 +215,31 @@ function onDoubleClick( event ){
 
 }
 
-function onKeyDown( event ) {
-
-}
-
 function onKeyUp( event ) {
-    switch(event.keyCode){
-        case 16: // SHIFT
+    switch(event.code){
+        case 'ShiftLeft': // SHIFT
+        case 'ShiftRight':
             if(debug){
                 (showOverlay) ? hideDebugDraw() : showDebugDraw();
                 showOverlay = !showOverlay;
             }
             break;
-        case 13: // ENTER
+        case 'Enter':
             restartMusic();
             break;
-        case 32: // SPACE
+        case 'Space':
             pauseResumeMusic();
             break;
-        case 49: // 1
+        case 'Digit1':
             stats.showPanel(0);
             break;
-        case 50: // 2
+        case 'Digit2':
             stats.showPanel(1);
             break;
-        case 51: // 3
+        case 'Digit3':
             stats.showPanel(2);
             break;
-        case 52: // 4
+        case 'Digit4':
             stats.showPanel(5);
             break;
     }

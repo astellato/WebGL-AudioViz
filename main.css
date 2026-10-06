@@ -68,11 +68,24 @@ a, button, input, select {
 		cursor: pointer;
 	}
 
-#overlayStartText{
+.overlayStartText{
 	height: auto;
 	background-color: #000;
 	white-space: pre-wrap;
 	padding: 24px 24px;
+}
+
+#audio-error{
+	display: none;
+	position: absolute;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 3;
+	background-color: #a00;
+	color: #fff;
+	padding: 8px 16px;
+	border-radius: 4px;
 }
 
 #notSupported {

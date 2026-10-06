@@ -12,6 +12,19 @@ import { AudioAnalyzer } from './AudioAnalyzer.js';
 const DEFAULT_AUDIO_FILE = './audio/1048360_Creo---Drift.mp3';
 const AUDIOINPUTS = Object.freeze({"DEFAULT":1, "MIC":2, "DROPMP3":3});
 
+// The start overlay is removed once init() runs, so load failures after that point
+// would otherwise be invisible. Show them in a small banner instead of alert().
+function showAudioError(message){
+    let banner = document.getElementById('audio-error');
+    if(!banner){
+        banner = document.createElement('div');
+        banner.id = 'audio-error';
+        document.body.appendChild(banner);
+    }
+    banner.textContent = message;
+    banner.style.display = 'block';
+}
+
 class AudioHandler {
 
     constructor(_selectedInput, _debug = false, _levelsCount = 6, _fftSize = 512){
@@ -45,6 +58,15 @@ class AudioHandler {
         this.analyzer.update(deltaTime);
     }
 
+    // Browsers start the AudioContext suspended until a user gesture allows audio.
+    // Call this from click/key handlers (and before play()) or playback stays silent.
+    resumeAudioContext(){
+        const context = this.listener && this.listener.context;
+        if(context && context.state === 'suspended'){
+            context.resume();
+        }
+    }
+
     stopAudio(){
         if(this.audio.isPlaying){
             this.audio.stop();
@@ -59,12 +81,13 @@ class AudioHandler {
     }
 
     pauseResumeAudio(){
+        this.resumeAudioContext();
         (this.audio.isPlaying) ? this.audio.pause() : this.audio.play();
     }
 
     useMic(){
         if (!navigator.mediaDevices?.getUserMedia){
-            alert('getUserMedia not supported in this browser.');
+            showAudioError('getUserMedia not supported in this browser.');
             return;
         }
 
@@ -78,7 +101,7 @@ class AudioHandler {
             this.startMicrophone(stream);
         }).catch((error) => {
             console.error('Error capturing audio.', error);
-            alert('Error capturing audio.');
+            showAudioError('Error capturing audio: ' + (error.message || error));
         });
     }
 
@@ -100,23 +123,23 @@ class AudioHandler {
         console.log('loading mp3 file: ' + file);
         loader.load( file,
             // onLoad callback
-            (function ( buffer ) {
+            ( buffer ) => {
                 console.log('load successful.');
                 this.isAudioReady = true;
                 this.audio.setBuffer( buffer );
                 this.audio.play();
-            }).bind(this),
-            
-            // // onProgress callback
-            // function ( xhr ) {
-            // 	console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
-            // },
+            },
 
-            // onError callback // will weirdly trigger during load???
-            (function ( err ) {
-                console.log( 'Error loading ' + file + " | error: " + err);
+            // onProgress callback (none needed; keep the slot so onError lands 4th.
+            // passing the error handler here used to fire it on every progress event)
+            undefined,
+
+            // onError callback
+            ( err ) => {
+                console.error( 'Error loading ' + file + " | error: " + err);
                 this.isAudioReady = false;
-            }).bind(this)
+                showAudioError('Could not load audio: ' + file);
+            }
         );
     }
 
