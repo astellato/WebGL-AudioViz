@@ -13,378 +13,387 @@ import { AudioHandler, AUDIOINPUTS } from './audio/AudioHandler.js';
 import { PostProcessHandler } from './PostProcessHandler.js';
 import { BlobShader } from './shaders/BlobShader.js';
 import { StarFieldShader } from './shaders/StarFieldShader.js';
+import {
+    FFT_SIZE, AUDIO_LEVELS, SPHERE_RADIUS, SPHERE_RESOLUTION,
+    DISPLACE_STRENGTH, MAX_DELTA_TIME,
+    MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE, NOISE_MAX,
+    CAMERA_FOV, CAMERA_NEAR, CAMERA_FAR, CAMERA_Z,
+    BRIGHTNESS_MIN, CONTRAST_MIN, OSCILATION_MIN, PHASE_MIN,
+    BRIGHTNESS_MULT, CONTRAST_MULT, OSCILATION_MULT, PHASE_MULT,
+} from './config.js';
 
-let scene, camera, renderer, audioHandler, container, stats;
-let blobUniforms, bgUniforms;
-let postProcess;
-let background;
-let showOverlay = false;
-let debug = true;
-let platformMobile = isMobile();
-// Starfield background is desktop-only: the 5-layer shader is too heavy for mobile GPUs
-let showBackground = !platformMobile;
-let clock = new THREE.Clock(true);
-let deltaTime;
-let elapsedTime = 0;
-let sphereMesh;
-let audioType;
+const WORLD_AXIS_UP = new THREE.Vector3(0, 1, 0);
 
-// tuning constants
-const displaceStrength = 20; // sphere radial displacement, pushed to the GPU via uDisplace
-const maxDeltaTime = 0.05;   // clamp frame gaps (tab refocus, GC stalls) to keep motion stable
-const maxPixelRatio = platformMobile ? 1.5 : 2; // cap render resolution on high-DPI screens
+class AudioSphereApp {
 
-let uSpeed = 0.3;
-let uNoiseStrength = 0.12;
-let uNoiseDensity = 1.5;
-let uFreq = 0;
-let uAmp = 0;
-let uOffset = 0.15;
-let uHueIntensity = 0.75;
-let uAlpha = 1.0;
-let uBrightness = new THREE.Vector3(0.5, 0.5, 0.4);
-let uContrast = new THREE.Vector3(0.2, 0.4, 0.2);
-let uOscilation = new THREE.Vector3(1.0, 0.7, 0);
-let uPhase = new THREE.Vector3(0, 0.10, 0.20);
+    constructor(){
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.audioHandler = null;
+        this.container = null;
+        this.stats = null;
+        this.blobUniforms = null;
+        this.bgUniforms = null;
+        this.postProcess = null;
+        this.background = null;
+        this.sphereMesh = null;
+        this.audioType = null;
+        this.showOverlay = false;
+        this.debug = true;
+        this.platformMobile = isMobile();
+        // Starfield background is desktop-only: the 5-layer shader is too heavy for mobile GPUs
+        this.showBackground = !this.platformMobile;
+        this.maxPixelRatio = this.platformMobile ? MAX_PIXEL_RATIO_MOBILE : MAX_PIXEL_RATIO_DESKTOP;
+        this.clock = new THREE.Clock(true);
+        this.deltaTime = 0;
+        this.elapsedTime = 0;
+        this.initialized = false;
 
-let uBrightnessMult = new THREE.Vector3(0.3, 0.1, 0.1);
-let uContrastMult = new THREE.Vector3(0.3, 0.3, 0.3);
-let uOscilationMult = new THREE.Vector3(1, 0.2, 1);
-let uPhaseMult = new THREE.Vector3(0.4, 0.4, 0.4);
+        // per-frame blob shader state, modulated from the audio analyzer
+        this.uSpeed = 0.3;
+        this.uNoiseStrength = 0.12;
+        this.uNoiseDensity = 1.5;
+        this.uFreq = 0;
+        this.uAmp = 0;
+        this.uOffset = 0.15;
+        this.uHueIntensity = 0.75;
+        this.uAlpha = 1.0;
+        this.uBrightness = BRIGHTNESS_MIN.clone();
+        this.uContrast = CONTRAST_MIN.clone();
+        this.uOscilation = OSCILATION_MIN.clone();
+        this.uPhase = PHASE_MIN.clone();
 
-let uBrightnessMin = new THREE.Vector3(0.5, 0.5, 0.4);
-let uContrastMin = new THREE.Vector3(0.2, 0.4, 0.2);
-let uOscilationMin = new THREE.Vector3(1.0, 0.7, 0);
-let uPhaseMin = new THREE.Vector3(0, 0.10, 0.20);
+        // callbacks registered as event listeners / RAF need a stable `this`
+        this.animate = this.animate.bind(this);
+        this.onWindowResize = this.onWindowResize.bind(this);
+        this.onDoubleClick = this.onDoubleClick.bind(this);
+        this.onKeyUp = this.onKeyUp.bind(this);
+    }
 
-let noiseMax = 1.; //128
+    startLive(){
+        this.audioType = AUDIOINPUTS.MIC;
+        this.init();
+    }
 
-let worldAxisUp = new THREE.Vector3(0, 1, 0);
+    startDefault(){
+        this.audioType = AUDIOINPUTS.DEFAULT;
+        this.init();
+    }
+
+    init() {
+        if(this.initialized)
+            return;
+        this.initialized = true;
+
+        //
+
+        const overlay = document.getElementById( 'overlay' );
+        overlay.remove();
+
+        //
+
+        this.container = document.getElementById( 'container' );
+
+        // MSAA doesn't apply to EffectComposer's render targets in r129, so antialiasing
+        // is handled by an FXAA pass instead (added below with the post processing chain)
+        this.renderer = new THREE.WebGLRenderer( { antialias: false } );
+        this.renderer.setClearColor( 0x000000 );
+        this.renderer.setPixelRatio( this.getPixelRatio() );
+        this.renderer.setSize( window.innerWidth, window.innerHeight );
+        this.container.appendChild( this.renderer.domElement );
+
+        this.stats = new Stats();
+        this.container.appendChild( this.stats.dom );
+        this.hideStats();
+
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.Fog( 0x000000, 1, 1000 );
+        const aspect = window.innerWidth / window.innerHeight;
+        this.camera = new THREE.PerspectiveCamera(CAMERA_FOV, aspect, CAMERA_NEAR, CAMERA_FAR);
+        this.camera.position.z = CAMERA_Z;
+        this.scene.add(this.camera);
+
+        // const controls = new OrbitControls( camera, renderer.domElement );
+        // controls.screenSpacePanning = true;
+
+        this.audioHandler = new AudioHandler(this.audioType, this.debug, AUDIO_LEVELS, FFT_SIZE);
+        // init() runs synchronously inside the button click, so this unlocks audio
+        // under the browser autoplay policy
+        this.audioHandler.resumeAudioContext();
+
+        this.setupScene();
+
+        this.postProcess = new PostProcessHandler(this.renderer, window.innerWidth, window.innerHeight, this.getPixelRatio());
+        this.postProcess.addRenderPass(this.scene, this.camera);
+
+        this.postProcess.addSobelPass();
+        this.postProcess.addUnrealBloomPass(0, 0, 0.9);
+        this.postProcess.addRGBShiftPass(0, 0);
+        this.postProcess.addAfterImagePass();
+        this.postProcess.addFXAAPass();     // smooths geometry edges now that MSAA is off
+        this.postProcess.addFilmGrainPass(NOISE_MAX, 0., 512., false);
+
+        document.addEventListener( 'dblclick', this.onDoubleClick );
+        window.addEventListener( 'resize', this.onWindowResize );
+        window.addEventListener( 'keyup', this.onKeyUp );
+
+        this.animate();
+
+
+    }
+
+    setupScene(){
+        this.setupSphere();
+        //if(!isMobile())
+        if(this.showBackground)
+            this.setupBackground();
+    }
+
+    setupSphere(){
+        const sphereGeometry = new THREE.SphereGeometry(SPHERE_RADIUS, SPHERE_RESOLUTION, SPHERE_RESOLUTION);
+
+        this.blobUniforms = THREE.UniformsUtils.clone( BlobShader.uniforms );
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader: BlobShader.vertexShader,
+            fragmentShader: BlobShader.fragmentShader,
+            uniforms: this.blobUniforms,
+            defines: {
+              PI: Math.PI
+            },
+            // wireframe: true,
+            side: THREE.DoubleSide,
+            transparent: true,
+          });
+        this.sphereMesh = new THREE.Mesh(sphereGeometry, material);
+        this.scene.add(this.sphereMesh);
+    }
+
+    setupBackground(){
+        this.bgUniforms = THREE.UniformsUtils.clone( StarFieldShader.uniforms );
+        this.bgUniforms[ 'resolution' ].value = new THREE.Vector2(window.innerWidth * this.getPixelRatio(), window.innerHeight * this.getPixelRatio());
+        const material = new THREE.ShaderMaterial({
+            vertexShader: StarFieldShader.vertexShader,
+            fragmentShader: StarFieldShader.fragmentShader,
+            uniforms: this.bgUniforms,
+        });
+
+        this.background = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), material);
+        this.background.position.z = -20;
+        this.scene.add(this.background);
+    }
+
+    getPixelRatio(){
+        return Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+    }
+
+    onWindowResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const pixelRatio = this.getPixelRatio();
+
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setPixelRatio( pixelRatio );
+        this.renderer.setSize( width, height );
+        this.postProcess.setSize( width, height, pixelRatio );
+
+        //if(!isMobile()){
+        if(this.showBackground) {
+            this.bgUniforms[ 'resolution' ].value.x = width * pixelRatio;
+            this.bgUniforms[ 'resolution' ].value.y = height * pixelRatio;
+        }
+    }
+
+    onDoubleClick( event ){
+        // if(isMobile()){
+        if(this.showBackground) {
+            this.pauseResumeMusic();
+        }
+
+    }
+
+    onKeyUp( event ) {
+        switch(event.code){
+            case 'ShiftLeft': // SHIFT
+            case 'ShiftRight':
+                if(this.debug){
+                    (this.showOverlay) ? this.hideDebugDraw() : this.showDebugDraw();
+                    this.showOverlay = !this.showOverlay;
+                }
+                break;
+            case 'Enter':
+                this.restartMusic();
+                break;
+            case 'Space':
+                this.pauseResumeMusic();
+                break;
+            case 'Digit1':
+                this.stats.showPanel(0);
+                break;
+            case 'Digit2':
+                this.stats.showPanel(1);
+                break;
+            case 'Digit3':
+                this.stats.showPanel(2);
+                break;
+            case 'Digit4':
+                this.stats.showPanel(5);
+                break;
+        }
+    }
+
+    animate() {
+        this.deltaTime = Math.min(this.clock.getDelta(), MAX_DELTA_TIME);
+
+        requestAnimationFrame( this.animate );
+
+        if(this.isPlaying())
+            this.render();
+
+        this.stats.update();
+
+    }
+
+    render() {
+        this.stats.begin();
+
+        this.elapsedTime += this.deltaTime;
+
+        this.audioHandler.update(this.deltaTime);
+
+        if(this.isPlaying()){
+            // displacement and rotation are cheap here: the actual vertex displacement
+            // happens in the shader via uDisplace, only the mesh rotation touches the CPU
+            const displace = DISPLACE_STRENGTH * this.audioHandler.analyzer.getAverage(5) * this.deltaTime;
+            const rotate = this.audioHandler.analyzer.getRelativeTotal() * this.deltaTime * 2.0;
+            this.sphereMesh.rotateOnWorldAxis(WORLD_AXIS_UP, rotate);
+            this.updateShaders(displace);
+        }
+
+        //renderer.render( scene, camera );
+        this.postProcess.render(this.deltaTime);
+
+        this.stats.end();
+    }
+
+    updateShaders(displace){
+
+        let avg0 = this.audioHandler.analyzer.getAverage(0);
+        let avg1 = this.audioHandler.analyzer.getAverage(1);
+        let avg2 = this.audioHandler.analyzer.getAverage(2);
+        let avg3 = this.audioHandler.analyzer.getAverage(3);
+        let avg4 = this.audioHandler.analyzer.getAverage(4);
+        let avg5 = this.audioHandler.analyzer.getAverage(5);
+        let s = this.audioHandler.analyzer.getRelativeTotal();
+
+        this.uSpeed = avg3 * 0.25;
+        this.uHueIntensity = 0.5 * avg4;
+        //uAlpha = 1.0 - aaR0;
+        this.uFreq = 1 + avg0 * 1.5;
+        this.uAmp = 1 + avg1 * 1.5;
+        this.uOffset = 1.0 - avg5;
+        this.uNoiseStrength = 0.15 + 1.5 * avg2;
+        this.uNoiseDensity = 2.0 * s;
+
+        // COLOR
+
+        this.uBrightness.x = BRIGHTNESS_MIN.x + BRIGHTNESS_MULT.x * avg3;
+        this.uBrightness.y = BRIGHTNESS_MIN.y + BRIGHTNESS_MULT.y * avg1;
+        this.uBrightness.z = BRIGHTNESS_MIN.z + BRIGHTNESS_MULT.z * avg0;
+
+        this.uContrast.x = CONTRAST_MIN.x + CONTRAST_MULT.x * avg2;
+        this.uContrast.y = CONTRAST_MIN.y + CONTRAST_MULT.y * avg5;
+        this.uContrast.z = CONTRAST_MIN.z + CONTRAST_MULT.z * avg4;
+
+        this.uOscilation.x = OSCILATION_MIN.x + OSCILATION_MULT.x * avg0;
+        this.uOscilation.y = OSCILATION_MIN.y + OSCILATION_MULT.y * avg3;
+        this.uOscilation.z = OSCILATION_MIN.z + OSCILATION_MULT.z * avg2;
+
+        this.uPhase.x = PHASE_MIN.x + PHASE_MULT.x * avg1;
+        this.uPhase.y = PHASE_MIN.y + PHASE_MULT.y * avg0;
+        this.uPhase.z = PHASE_MIN.z + PHASE_MULT.z * avg2;
+
+        // blob uniforms
+        this.blobUniforms.uTime.value = this.elapsedTime;
+        this.blobUniforms.uDisplace.value = displace;
+        this.blobUniforms.uSpeed.value = this.uSpeed;
+        this.blobUniforms.uNoiseStrength.value = this.uNoiseStrength;
+        this.blobUniforms.uNoiseDensity.value = this.uNoiseDensity;
+        this.blobUniforms.uFreq.value = this.uFreq;
+        this.blobUniforms.uAmp.value = this.uAmp;
+        this.blobUniforms.uOffset.value = this.uOffset;
+        this.blobUniforms.uHue.value = this.uHueIntensity;
+        this.blobUniforms.uAlpha.value = this.uAlpha;
+        this.blobUniforms.uBrightness.value = this.uBrightness;
+        this.blobUniforms.uContrast.value = this.uContrast;
+        this.blobUniforms.uOscilation.value = this.uOscilation;
+        this.blobUniforms.uPhase.value = this.uPhase;
+
+        // post processing
+        this.postProcess.enableSobelPass(s > 0.9 && s < 0.98);
+        this.postProcess.afterImagePass.uniforms[ 'damp' ].value = .02 + avg0 * 0.97;
+        const bloomStrength = avg4 * 0.25;
+        this.postProcess.unrealBloomPass.strength = bloomStrength;
+        // skip the whole bloom chain while its contribution would be invisible anyway
+        this.postProcess.unrealBloomPass.enabled = bloomStrength > 0.01;
+        this.postProcess.rgbShiftPass.uniforms[ 'amount' ].value = 0.006 * avg1;
+        let rgbAngle = this.postProcess.rgbShiftPass.uniforms[ 'angle' ].value;
+
+        rgbAngle += avg0 * 0.02;
+        rgbAngle = rgbAngle % Math.PI;
+
+        this.postProcess.rgbShiftPass.uniforms[ 'angle' ].value = rgbAngle;
+        this.postProcess.filmPass.uniforms[ 'nIntensity' ].value = .1 + avg3*(NOISE_MAX - .1);
+
+        // if(!isMobile()){
+        if(this.showBackground) {
+            this.bgUniforms[ 'time' ].value += s * 0.2;
+            this.bgUniforms[ 'strength' ].value = 0.15 * avg2;
+        }
+    }
+
+    isPlaying(){
+        return this.audioHandler.audio.isPlaying || this.audioHandler.currentInput == AUDIOINPUTS.MIC;
+    }
+
+    pauseResumeMusic(){
+        this.audioHandler.pauseResumeAudio();
+    }
+
+    restartMusic(){
+        this.audioHandler.restartAudio();
+    }
+
+    hideStats(){
+        this.stats.showPanel(5);
+    }
+
+    showStats(){
+        this.stats.showPanel(0);
+    }
+
+    showDebugDraw(){
+        document.getElementById( 'audio-debug-holder' ).style.display = 'block';
+        this.audioHandler.analyzer.setDrawEnabled(true);
+        this.showStats();
+    }
+
+    hideDebugDraw(){
+        document.getElementById( 'audio-debug-holder' ).style.display = 'none';
+        this.audioHandler.analyzer.setDrawEnabled(false);
+        this.hideStats();
+    }
+
+}
+
+const app = new AudioSphereApp();
 
 const startButton = document.getElementById( 'startButton' );
-startButton.addEventListener( 'click', startLive );
+startButton.addEventListener( 'click', () => app.startLive() );
 
 const defaultButton = document.getElementById( 'defaultButton' );
-defaultButton.addEventListener( 'click', startDefault );
+defaultButton.addEventListener( 'click', () => app.startDefault() );
 
-function startLive(){
-    audioType = AUDIOINPUTS.MIC;
-    init();
-}
-
-function startDefault(){
-    audioType = AUDIOINPUTS.DEFAULT;
-    init();
-}
-
-function init() {
-
-    const fftSize = 512;
-    const audioLevels = 6;
-
-    //
-
-    const overlay = document.getElementById( 'overlay' );
-    overlay.remove();
-
-    //
-
-    container = document.getElementById( 'container' );
-
-    // MSAA doesn't apply to EffectComposer's render targets in r129, so antialiasing
-    // is handled by an FXAA pass instead (added below with the post processing chain)
-    renderer = new THREE.WebGLRenderer( { antialias: false } );
-    renderer.setClearColor( 0x000000 );
-    renderer.setPixelRatio( getPixelRatio() );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    container.appendChild( renderer.domElement );
-
-    stats = new Stats();
-	container.appendChild( stats.dom );
-    hideStats();
-
-    scene = new THREE.Scene();
-    scene.fog = new THREE.Fog( 0x000000, 1, 1000 );
-    const fov = 75;
-    const aspect = window.innerWidth / window.innerHeight;
-    const near = 0.1;
-    const far = 1000;
-    camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    camera.position.z = 3;
-    scene.add(camera);
-
-    // const controls = new OrbitControls( camera, renderer.domElement );
-	// controls.screenSpacePanning = true;
-
-    audioHandler = new AudioHandler(audioType, debug, audioLevels, fftSize);
-    // init() runs synchronously inside the button click, so this unlocks audio
-    // under the browser autoplay policy
-    audioHandler.resumeAudioContext();
-
-    setupScene();
-
-    postProcess = new PostProcessHandler(renderer, window.innerWidth, window.innerHeight, getPixelRatio());
-    postProcess.addRenderPass(scene, camera);
-
-    postProcess.addSobelPass();
-    postProcess.addUnrealBloomPass(0, 0, 0.9);
-    postProcess.addRGBShiftPass(0, 0);
-    postProcess.addAfterImagePass();
-    postProcess.addFXAAPass();     // smooths geometry edges now that MSAA is off
-    postProcess.addFilmGrainPass(noiseMax, 0., 512., false);
-
-    document.addEventListener( 'dblclick', onDoubleClick );
-    window.addEventListener( 'resize', onWindowResize );
-    window.addEventListener( 'keyup', onKeyUp );
-
-    animate();
-
-
-}
-
-function setupScene(){
-    setupSphere();
-    //if(!isMobile())
-    if(showBackground)
-        setupBackground();
-}
-
-function setupSphere(){
-    const sphereRes = 128;
-    const sphereGeometry = new THREE.SphereGeometry(0.25, sphereRes, sphereRes);
-
-    blobUniforms = THREE.UniformsUtils.clone( BlobShader.uniforms );
-    
-    const material = new THREE.ShaderMaterial({
-        vertexShader: BlobShader.vertexShader,
-        fragmentShader: BlobShader.fragmentShader,
-        uniforms: blobUniforms,
-        defines: {
-          PI: Math.PI
-        },
-        // wireframe: true,
-        side: THREE.DoubleSide,
-        transparent: true,
-      });
-    sphereMesh = new THREE.Mesh(sphereGeometry, material);
-    scene.add(sphereMesh);
-}
-
-function setupBackground(){
-    bgUniforms = THREE.UniformsUtils.clone( StarFieldShader.uniforms );
-    bgUniforms[ 'resolution' ].value = new THREE.Vector2(window.innerWidth * getPixelRatio(), window.innerHeight * getPixelRatio());
-    const material = new THREE.ShaderMaterial({
-        vertexShader: StarFieldShader.vertexShader,
-        fragmentShader: StarFieldShader.fragmentShader,
-        uniforms: bgUniforms,
-    });
-
-    background = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), material);
-    background.position.z = -20;
-    scene.add(background);
-}
-
-function getPixelRatio(){
-    return Math.min(window.devicePixelRatio || 1, maxPixelRatio);
-}
-
-function onWindowResize() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const pixelRatio = getPixelRatio();
-
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio( pixelRatio );
-    renderer.setSize( width, height );
-    postProcess.setSize( width, height, pixelRatio );
-
-    //if(!isMobile()){
-    if(showBackground) {
-        bgUniforms[ 'resolution' ].value.x = width * pixelRatio;
-        bgUniforms[ 'resolution' ].value.y = height * pixelRatio;
-    }
-}
-
-function onDoubleClick( event ){
-    // if(isMobile()){
-    if(showBackground) {
-        pauseResumeMusic();
-    }
-
-}
-
-function onKeyUp( event ) {
-    switch(event.code){
-        case 'ShiftLeft': // SHIFT
-        case 'ShiftRight':
-            if(debug){
-                (showOverlay) ? hideDebugDraw() : showDebugDraw();
-                showOverlay = !showOverlay;
-            }
-            break;
-        case 'Enter':
-            restartMusic();
-            break;
-        case 'Space':
-            pauseResumeMusic();
-            break;
-        case 'Digit1':
-            stats.showPanel(0);
-            break;
-        case 'Digit2':
-            stats.showPanel(1);
-            break;
-        case 'Digit3':
-            stats.showPanel(2);
-            break;
-        case 'Digit4':
-            stats.showPanel(5);
-            break;
-    }
-}
-
-function animate() {
-    deltaTime = Math.min(clock.getDelta(), maxDeltaTime);
-
-    requestAnimationFrame( animate );
-
-    if(isPlaying())
-        render();
-
-    stats.update();
-
-}
-
-function render() {
-    stats.begin();
-
-    elapsedTime += deltaTime;
-
-    audioHandler.update(deltaTime);
-
-    if(isPlaying()){
-        // displacement and rotation are cheap here: the actual vertex displacement
-        // happens in the shader via uDisplace, only the mesh rotation touches the CPU
-        const displace = displaceStrength * audioHandler.analyzer.getAverage(5) * deltaTime;
-        const rotate = audioHandler.analyzer.getRelativeTotal() * deltaTime * 2.0;
-        sphereMesh.rotateOnWorldAxis(worldAxisUp, rotate);
-        updateShaders(displace);
-    }
-
-    //renderer.render( scene, camera );
-    postProcess.render(deltaTime);
-
-    stats.end();
-}
-
-function updateShaders(displace){
-
-    let avg0 = audioHandler.analyzer.getAverage(0);
-    let avg1 = audioHandler.analyzer.getAverage(1);
-    let avg2 = audioHandler.analyzer.getAverage(2);
-    let avg3 = audioHandler.analyzer.getAverage(3);
-    let avg4 = audioHandler.analyzer.getAverage(4);
-    let avg5 = audioHandler.analyzer.getAverage(5);
-    let s = audioHandler.analyzer.getRelativeTotal();
-
-    uSpeed = avg3 * 0.25;
-    uHueIntensity = 0.5 * avg4;
-    //uAlpha = 1.0 - aaR0;
-    uFreq = 1 + avg0 * 1.5;
-    uAmp = 1 + avg1 * 1.5;
-    uOffset = 1.0 - avg5;
-    uNoiseStrength = 0.15 + 1.5 * avg2;
-    uNoiseDensity = 2.0 * s;
-
-    // COLOR
-
-    uBrightness.x = uBrightnessMin.x + uBrightnessMult.x * avg3;
-    uBrightness.y = uBrightnessMin.y + uBrightnessMult.y * avg1;
-    uBrightness.z = uBrightnessMin.z + uBrightnessMult.z * avg0;
-
-    uContrast.x = uContrastMin.x + uContrastMult.x * avg2;
-    uContrast.y = uContrastMin.y + uContrastMult.y * avg5;
-    uContrast.z = uContrastMin.z + uContrastMult.z * avg4;
-
-    uOscilation.x = uOscilationMin.x + uOscilationMult.x * avg0;
-    uOscilation.y = uOscilationMin.y + uOscilationMult.y * avg3;
-    uOscilation.z = uOscilationMin.z + uOscilationMult.z * avg2;
-
-    uPhase.x = uPhaseMin.x + uPhaseMult.x * avg1;
-    uPhase.y = uPhaseMin.y + uPhaseMult.y * avg0;
-    uPhase.z = uPhaseMin.z + uPhaseMult.z * avg2;
-
-    // blob uniforms
-    blobUniforms.uTime.value = elapsedTime;
-    blobUniforms.uDisplace.value = displace;
-    blobUniforms.uSpeed.value = uSpeed;
-    blobUniforms.uNoiseStrength.value = uNoiseStrength;
-    blobUniforms.uNoiseDensity.value = uNoiseDensity;
-    blobUniforms.uFreq.value = uFreq;
-    blobUniforms.uAmp.value = uAmp;
-    blobUniforms.uOffset.value = uOffset;
-    blobUniforms.uHue.value = uHueIntensity;
-    blobUniforms.uAlpha.value = uAlpha;
-    blobUniforms.uBrightness.value = uBrightness;
-    blobUniforms.uContrast.value = uContrast;
-    blobUniforms.uOscilation.value = uOscilation;
-    blobUniforms.uPhase.value = uPhase;
-
-    // post processing
-    postProcess.enableSobelPass(s > 0.9 && s < 0.98);
-    postProcess.afterImagePass.uniforms[ 'damp' ].value = .02 + avg0 * 0.97;
-    const bloomStrength = avg4 * 0.25;
-    postProcess.unrealBloomPass.strength = bloomStrength;
-    // skip the whole bloom chain while its contribution would be invisible anyway
-    postProcess.unrealBloomPass.enabled = bloomStrength > 0.01;
-    postProcess.rgbShiftPass.uniforms[ 'amount' ].value = 0.006 * avg1;
-    let rgbAngle = postProcess.rgbShiftPass.uniforms[ 'angle' ].value;
-
-    rgbAngle += avg0 * 0.02;
-    rgbAngle = rgbAngle % Math.PI;
-
-    postProcess.rgbShiftPass.uniforms[ 'angle' ].value = rgbAngle;
-    postProcess.filmPass.uniforms[ 'nIntensity' ].value = .1 + avg3*(noiseMax - .1);
-    
-    // if(!isMobile()){
-    if(showBackground) {
-        bgUniforms[ 'time' ].value += s * 0.2;
-        bgUniforms[ 'strength' ].value = 0.15 * avg2;
-    }
-}
-
-function isPlaying(){
-    return audioHandler.audio.isPlaying || audioHandler.currentInput == AUDIOINPUTS.MIC;
-}
-
-function pauseResumeMusic(){
-    audioHandler.pauseResumeAudio();
-}
-
-function restartMusic(){
-    audioHandler.restartAudio();
-}
-
-function hideStats(){
-    stats.showPanel(5);
-}
-
-function showStats(){
-    stats.showPanel(0);
-}
-
-function showDebugDraw(){
-    document.getElementById( 'audio-debug-holder' ).style.display = 'block';
-    audioHandler.analyzer.setDrawEnabled(true);
-    showStats();
-}
-
-function hideDebugDraw(){
-    document.getElementById( 'audio-debug-holder' ).style.display = 'none';
-    audioHandler.analyzer.setDrawEnabled(false);
-    hideStats();
-}
-
-
-
+export { AudioSphereApp };
