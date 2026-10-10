@@ -41,3 +41,13 @@ export const BRIGHTNESS_MULT = new Vector3(0.3, 0.1, 0.1);
 export const CONTRAST_MULT = new Vector3(0.3, 0.3, 0.3);
 export const OSCILATION_MULT = new Vector3(1, 0.2, 1);
 export const PHASE_MULT = new Vector3(0.4, 0.4, 0.4);
+
+// Beat detection (spectral flux + adaptive threshold). Starting values;
+// tuned by ear against real tracks.
+export const BEAT_WINDOW_SECONDS = 1.0;
+export const BEAT_MARGIN = 1.6;
+export const BEAT_FLUX_FLOOR = 0.02;
+export const BEAT_REFRACTORY_SECONDS = 0.12;
+
+// Extra blob displacement added on a beat (Phase 1 pill)
+export const BEAT_PULSE = 0.15;
