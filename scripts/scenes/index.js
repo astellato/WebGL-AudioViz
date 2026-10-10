@@ -12,12 +12,14 @@ import { blobSceneDefinition } from './BlobScene.js';
 import { meshGridSceneDefinition } from './MeshGridScene.js';
 import { tunnelSceneDefinition } from './TunnelScene.js';
 import { lightFallSceneDefinition } from './LightFallScene.js';
+import { particleDanceSceneDefinition } from './ParticleDanceScene.js';
 
 const SCENE_DEFINITIONS = [
     blobSceneDefinition,
     meshGridSceneDefinition,
     tunnelSceneDefinition,
     lightFallSceneDefinition,
+    particleDanceSceneDefinition,
 ];
 
 export { SCENE_DEFINITIONS };
