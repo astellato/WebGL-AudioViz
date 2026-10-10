@@ -10,10 +10,12 @@
 
 import { blobSceneDefinition } from './BlobScene.js';
 import { meshGridSceneDefinition } from './MeshGridScene.js';
+import { tunnelSceneDefinition } from './TunnelScene.js';
 
 const SCENE_DEFINITIONS = [
     blobSceneDefinition,
     meshGridSceneDefinition,
+    tunnelSceneDefinition,
 ];
 
 export { SCENE_DEFINITIONS };
