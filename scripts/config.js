@@ -57,3 +57,6 @@ export const STORAGE_KEY = 'audioviz.control.v1';
 export const DRIFT_DEFAULT_SPEED_SECONDS = 60;
 export const DRIFT_SPEED_OPTIONS = [30, 60, 120];
 export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
+
+// Mobile swipe
+export const SWIPE_THRESHOLD_PX = 40;
