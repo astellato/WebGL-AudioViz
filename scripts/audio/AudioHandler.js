@@ -36,7 +36,6 @@ class AudioHandler {
         this.analyzer = null;
         this.listener = null;
         this.audioData = null;
-        this.isOnBeat = false;
         this.gainSensitivity = 128;
         this.initAudio(_debug);
         
@@ -56,6 +55,10 @@ class AudioHandler {
 
     update(deltaTime){
         this.analyzer.update(deltaTime);
+    }
+
+    getOutput(){
+        return this.audio.getOutput();
     }
 
     // Browsers start the AudioContext suspended until a user gesture allows audio.
