@@ -15,6 +15,7 @@ function el(tag, attrs = {}, children = []) {
     for (const [key, value] of Object.entries(attrs)) {
         if (key === 'text') node.textContent = value;
         else if (key === 'onchange') node.addEventListener('change', value);
+        else if (key === 'onclick') node.addEventListener('click', value);
         else node.setAttribute(key, value);
     }
     for (const child of children) node.appendChild(child);

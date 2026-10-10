@@ -21,4 +21,14 @@ const checkIsNan = (num) => {
     return (Number.isNaN(num)) ? 0.0 : num;
 }
 
-export { isMobile, isIOS, clamp, checkIsNan };
+// three r186's WebGLRenderer requires WebGL2; detect its absence so the app can
+// show a message instead of throwing on renderer construction.
+function hasWebGL2(createCanvas = () => document.createElement('canvas')){
+    try {
+        return !!createCanvas().getContext('webgl2');
+    } catch {
+        return false;
+    }
+}
+
+export { isMobile, isIOS, clamp, checkIsNan, hasWebGL2 };

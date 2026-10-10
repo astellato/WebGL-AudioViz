@@ -50,6 +50,7 @@ class ButterchurnScene {
         this.canvas = null;
         this.visualizer = null;
         this.unsupported = false;
+        this._supported = undefined;
         this.presetName = VARIANTS.length ? VARIANTS[0].name : null;
         this.pixelRatio = context.pixelRatio || 1;
         this._loading = null;
@@ -57,11 +58,10 @@ class ButterchurnScene {
 
     activate() {
         this.active = true;
-        if (this.unsupported) {
-            this._showNote();
-            return;
-        }
-        if (!isButterchurnSupported()) {
+        // probe WebGL2 once: repeatedly creating throwaway contexts would leak
+        // them (and can drop the shared three.js context at the browser's limit)
+        if (this._supported === undefined) this._supported = isButterchurnSupported();
+        if (!this._supported || this.unsupported) {
             this.unsupported = true;
             this._showNote();
             return;
@@ -73,6 +73,7 @@ class ButterchurnScene {
     deactivate() {
         this.active = false;
         if (this.canvas) this.canvas.style.display = 'none';
+        this._hideNote();
     }
 
     setVariant(index) {
@@ -142,6 +143,7 @@ class ButterchurnScene {
             })
             .catch((error) => {
                 console.error('Butterchurn failed to initialise', error);
+                this._supported = false;
                 this.unsupported = true;
                 this._showNote();
             })
@@ -163,6 +165,11 @@ class ButterchurnScene {
     _showNote() {
         const note = document.getElementById('butterchurn-note');
         if (note) note.style.display = 'block';
+    }
+
+    _hideNote() {
+        const note = document.getElementById('butterchurn-note');
+        if (note) note.style.display = 'none';
     }
 }
 

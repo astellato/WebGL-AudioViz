@@ -20,6 +20,7 @@ class SceneManager {
         this.context = context;
         this.instances = new Map();
         this._activeIndex = -1;
+        this._size = context.width ? { width: context.width, height: context.height, pixelRatio: context.pixelRatio } : null;
     }
 
     get count() { return this.definitions.length; }
@@ -60,6 +61,11 @@ class SceneManager {
         const scene = this._getOrCreate(index);
         this._activeIndex = index;
         if (scene && scene.activate) scene.activate();
+        // a scene created before a resize keeps stale camera/composer sizes, so
+        // bring it up to the current size on every activation
+        if (scene && scene.resize && this._size) {
+            scene.resize(this._size.width, this._size.height, this._size.pixelRatio);
+        }
         return scene;
     }
 
@@ -77,6 +83,7 @@ class SceneManager {
     }
 
     resize(width, height, pixelRatio) {
+        this._size = { width, height, pixelRatio };
         const scene = this.activeScene;
         if (scene && scene.resize) scene.resize(width, height, pixelRatio);
     }

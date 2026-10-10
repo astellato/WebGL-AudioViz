@@ -39,3 +39,13 @@ it('dispatches update/resize/variant to the active scene only', () => {
   expect(b.resize).toHaveBeenCalledWith(100, 100, 1);
   expect(b.setVariant).toHaveBeenCalledWith(0);
 });
+
+it('resizes a reused scene to the last known size on activate', () => {
+  const m = new SceneManager(defs, ctx);
+  const a = m.activate(0);
+  m.resize(500, 400, 2);   // only the active scene is resized here
+  m.activate(1);
+  a.resize.mockClear();
+  m.activate(0);           // reactivating must catch a up to the current size
+  expect(a.resize).toHaveBeenCalledWith(500, 400, 2);
+});

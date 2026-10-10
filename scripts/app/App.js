@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 
-import { isMobile } from '../Utils.js';
+import { isMobile, hasWebGL2 } from '../Utils.js';
 import { AudioHandler, AUDIOINPUTS } from '../audio/AudioHandler.js';
 import { SCENE_DEFINITIONS } from '../scenes/index.js';
 import { ControlState } from './ControlState.js';
@@ -74,6 +74,13 @@ class App {
     init() {
         if (this.initialized) return;
         this.initialized = true;
+
+        // three r186's WebGLRenderer needs WebGL2; without it, constructing the
+        // renderer throws and (overlay already gone) leaves a black screen.
+        if (!hasWebGL2()) {
+            this.showWebGL2Error();
+            return;
+        }
 
         const overlay = document.getElementById('overlay');
         if (overlay) overlay.remove();
@@ -223,6 +230,13 @@ class App {
 
     getPixelRatio() {
         return Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
+    }
+
+    showWebGL2Error() {
+        const overlay = document.getElementById('overlay');
+        if (overlay) {
+            overlay.innerHTML = '<div class="overlayStartText">This visualizer needs WebGL2, which this browser or device does not support.</div>';
+        }
     }
 
     onWindowResize() {
