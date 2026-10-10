@@ -41,3 +41,25 @@ export const BRIGHTNESS_MULT = new Vector3(0.3, 0.1, 0.1);
 export const CONTRAST_MULT = new Vector3(0.3, 0.3, 0.3);
 export const OSCILATION_MULT = new Vector3(1, 0.2, 1);
 export const PHASE_MULT = new Vector3(0.4, 0.4, 0.4);
+
+// Beat detection (spectral flux + adaptive threshold). Starting values;
+// tuned by ear against real tracks.
+export const BEAT_WINDOW_SECONDS = 1.0;
+export const BEAT_MARGIN = 1.6;
+export const BEAT_FLUX_FLOOR = 0.02;
+export const BEAT_REFRACTORY_SECONDS = 0.12;
+
+// Extra blob displacement added on a beat (Phase 1 pill)
+export const BEAT_PULSE = 0.15;
+
+// Control state / drift
+export const STORAGE_KEY = 'audioviz.control.v1';
+export const DRIFT_DEFAULT_SPEED_SECONDS = 60;
+export const DRIFT_SPEED_OPTIONS = [30, 60, 120];
+export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
+
+// Mobile swipe
+export const SWIPE_THRESHOLD_PX = 40;
+
+// Name flash
+export const NAME_FLASH_MS = 1600;
