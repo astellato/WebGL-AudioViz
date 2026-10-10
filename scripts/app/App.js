@@ -20,6 +20,7 @@ import { SceneManager } from './SceneManager.js';
 import { loadControlState, saveControlState } from './Persistence.js';
 import { NameFlash } from './NameFlash.js';
 import { KeyboardController } from './KeyboardController.js';
+import { GestureController } from './GestureController.js';
 import {
     FFT_SIZE, AUDIO_LEVELS, MAX_DELTA_TIME,
     MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE, NAME_FLASH_MS,
@@ -37,6 +38,7 @@ class App {
         this.unsubscribe = null;
         this.nameFlash = null;
         this.keyboard = null;
+        this.gestures = null;
         this.actions = null;
         this.gui = null;
 
@@ -119,6 +121,16 @@ class App {
         this.keyboard = new KeyboardController({
             actions: this.actions,
             isGuiFocused: (event) => this.isGuiFocused(event),
+        });
+
+        const guiToggle = document.getElementById('gui-toggle');
+        if (guiToggle) {
+            guiToggle.addEventListener('click', () => this.actions['gui-toggle']());
+        }
+        this.gestures = new GestureController({
+            element: document.body,
+            actions: this.actions,
+            isInteractive: (target) => !!(target && target.closest && (target.closest('#gui') || target.closest('#gui-toggle'))),
         });
 
         document.addEventListener('dblclick', this.onDoubleClick);

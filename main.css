@@ -218,3 +218,24 @@ a, button, input, select {
 	opacity: 1;
 }
 
+/* GUI TOGGLE (touch devices only; desktop uses the H key) */
+
+#gui-toggle{
+	display: none;
+	position: fixed;
+	right: 16px;
+	top: 16px;
+	z-index: 5;
+	width: 40px;
+	height: 40px;
+	font-size: 18px;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 4px;
+}
+
+@media (pointer: coarse){
+	#gui-toggle{ display: block; }
+}
+
