@@ -51,3 +51,8 @@ export const BEAT_REFRACTORY_SECONDS = 0.12;
 
 // Extra blob displacement added on a beat (Phase 1 pill)
 export const BEAT_PULSE = 0.15;
+
+// Control state / drift
+export const DRIFT_DEFAULT_SPEED_SECONDS = 60;
+export const DRIFT_SPEED_OPTIONS = [30, 60, 120];
+export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
