@@ -9,9 +9,11 @@
 */
 
 import { blobSceneDefinition } from './BlobScene.js';
+import { meshGridSceneDefinition } from './MeshGridScene.js';
 
 const SCENE_DEFINITIONS = [
     blobSceneDefinition,
+    meshGridSceneDefinition,
 ];
 
 export { SCENE_DEFINITIONS };
