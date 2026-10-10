@@ -219,7 +219,6 @@ a, button, input, select {
 }
 
 /* GUI TOGGLE (touch devices only; desktop uses the H key) */
-
 #gui-toggle{
 	display: none;
 	position: fixed;
@@ -237,6 +236,24 @@ a, button, input, select {
 
 @media (pointer: coarse){
 	#gui-toggle{ display: block; }
+}
+
+/* BUTTERCHURN UNSUPPORTED NOTE */
+
+#butterchurn-note{
+	display: none;
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 5;
+	max-width: 320px;
+	text-align: center;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 6px;
+	padding: 14px 18px;
 }
 
 /* GUI PANEL (closed by default) */

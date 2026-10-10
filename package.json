@@ -12,6 +12,8 @@
   },
   "keywords": [],
   "dependencies": {
+    "butterchurn": "^2.6.7",
+    "butterchurn-presets": "^2.4.7",
     "three": "^0.186.1"
   },
   "devDependencies": {

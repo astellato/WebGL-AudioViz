@@ -13,6 +13,7 @@ import { meshGridSceneDefinition } from './MeshGridScene.js';
 import { tunnelSceneDefinition } from './TunnelScene.js';
 import { lightFallSceneDefinition } from './LightFallScene.js';
 import { particleDanceSceneDefinition } from './ParticleDanceScene.js';
+import { butterchurnSceneDefinition } from './ButterchurnScene.js';
 
 const SCENE_DEFINITIONS = [
     blobSceneDefinition,
@@ -20,6 +21,7 @@ const SCENE_DEFINITIONS = [
     tunnelSceneDefinition,
     lightFallSceneDefinition,
     particleDanceSceneDefinition,
+    butterchurnSceneDefinition,
 ];
 
 export { SCENE_DEFINITIONS };
