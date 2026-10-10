@@ -11,11 +11,13 @@
 import { blobSceneDefinition } from './BlobScene.js';
 import { meshGridSceneDefinition } from './MeshGridScene.js';
 import { tunnelSceneDefinition } from './TunnelScene.js';
+import { lightFallSceneDefinition } from './LightFallScene.js';
 
 const SCENE_DEFINITIONS = [
     blobSceneDefinition,
     meshGridSceneDefinition,
     tunnelSceneDefinition,
+    lightFallSceneDefinition,
 ];
 
 export { SCENE_DEFINITIONS };
