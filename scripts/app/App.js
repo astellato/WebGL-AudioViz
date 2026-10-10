@@ -22,6 +22,7 @@ import { NameFlash } from './NameFlash.js';
 import { KeyboardController } from './KeyboardController.js';
 import { GestureController } from './GestureController.js';
 import { GUIController } from './GUIController.js';
+import { DriftController } from './DriftController.js';
 import {
     FFT_SIZE, AUDIO_LEVELS, MAX_DELTA_TIME,
     MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE, NAME_FLASH_MS,
@@ -42,6 +43,7 @@ class App {
         this.gestures = null;
         this.actions = null;
         this.gui = null;
+        this.drift = null;
 
         this.audioType = null;
         this.showOverlay = false;
@@ -121,8 +123,8 @@ class App {
             'gui-toggle': () => this.toggleGui(),
             setScene: (i) => this.state.setScene(i),
             setVariant: (i) => { const id = this.activeSceneId(); if (id) this.state.setVariant(id, i); },
-            setDriftEnabled: (b) => this.state.setDriftEnabled(b),
-            setDriftSpeed: (s) => this.state.setDriftSpeed(Number(s)),
+            setDriftEnabled: (b) => this.applyDriftEnabled(b),
+            setDriftSpeed: (s) => { this.state.setDriftSpeed(Number(s)); if (this.drift) this.drift.setSpeed(Number(s)); },
             setDriftScope: (s) => this.state.setDriftScope(s),
             toggleStats: () => this.toggleStats(),
             toggleAudioDebug: () => this.toggleAudioDebug(),
@@ -150,6 +152,8 @@ class App {
             lineup: SCENE_DEFINITIONS,
             getDebugState: () => ({ stats: this.statsVisible, audioOverlay: this.showOverlay }),
         });
+
+        this.drift = new DriftController(this.state.drift.speedSeconds);
 
         document.addEventListener('dblclick', this.onDoubleClick);
         window.addEventListener('resize', this.onWindowResize);
@@ -180,8 +184,24 @@ class App {
 
     toggleDrift() {
         const enabled = !this.state.drift.enabled;
-        this.state.setDriftEnabled(enabled);
+        this.applyDriftEnabled(enabled);
         this.nameFlash.show(enabled ? 'Drift on' : 'Drift off');
+    }
+
+    /** Enabling drift starts a fresh interval; the timer lives in DriftController. */
+    applyDriftEnabled(enabled) {
+        this.state.setDriftEnabled(enabled);
+        if (this.drift && enabled) {
+            this.drift.setSpeed(this.state.drift.speedSeconds);
+            this.drift.reset();
+        }
+    }
+
+    flashCurrent() {
+        const def = SCENE_DEFINITIONS[this.state.sceneIndex];
+        if (!def) return;
+        const variant = def.variants[this.state.getVariantIndex(def.id)];
+        this.nameFlash.show(variant ? `${def.name} — ${variant.name}` : def.name);
     }
 
     isGuiFocused() {
@@ -275,6 +295,16 @@ class App {
         this.stats.begin();
 
         this.audioHandler.update(this.deltaTime);
+
+        const driftDue = this.drift.tick(this.deltaTime, {
+            enabled: this.state.drift.enabled,
+            audioPaused: !this.isPlaying(),
+            hidden: document.hidden,
+        });
+        if (driftDue) {
+            this.state.driftStep();
+            this.flashCurrent();
+        }
 
         this.sceneManager.update(
             this.audioHandler.analyzer,
