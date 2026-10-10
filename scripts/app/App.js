@@ -21,6 +21,7 @@ import { loadControlState, saveControlState } from './Persistence.js';
 import { NameFlash } from './NameFlash.js';
 import { KeyboardController } from './KeyboardController.js';
 import { GestureController } from './GestureController.js';
+import { GUIController } from './GUIController.js';
 import {
     FFT_SIZE, AUDIO_LEVELS, MAX_DELTA_TIME,
     MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE, NAME_FLASH_MS,
@@ -44,6 +45,7 @@ class App {
 
         this.audioType = null;
         this.showOverlay = false;
+        this.statsVisible = false;
         this.debug = true;
         this.platformMobile = isMobile();
         this.maxPixelRatio = this.platformMobile ? MAX_PIXEL_RATIO_MOBILE : MAX_PIXEL_RATIO_DESKTOP;
@@ -116,7 +118,15 @@ class App {
             'variant-next': () => this.changeVariant(1),
             'variant-prev': () => this.changeVariant(-1),
             'drift-toggle': () => this.toggleDrift(),
-            'gui-toggle': () => { if (this.gui) this.gui.toggle(); },
+            'gui-toggle': () => this.toggleGui(),
+            setScene: (i) => this.state.setScene(i),
+            setVariant: (i) => { const id = this.activeSceneId(); if (id) this.state.setVariant(id, i); },
+            setDriftEnabled: (b) => this.state.setDriftEnabled(b),
+            setDriftSpeed: (s) => this.state.setDriftSpeed(Number(s)),
+            setDriftScope: (s) => this.state.setDriftScope(s),
+            toggleStats: () => this.toggleStats(),
+            toggleAudioDebug: () => this.toggleAudioDebug(),
+            toggleGui: () => this.toggleGui(),
         };
         this.keyboard = new KeyboardController({
             actions: this.actions,
@@ -125,12 +135,20 @@ class App {
 
         const guiToggle = document.getElementById('gui-toggle');
         if (guiToggle) {
-            guiToggle.addEventListener('click', () => this.actions['gui-toggle']());
+            guiToggle.addEventListener('click', () => this.toggleGui());
         }
         this.gestures = new GestureController({
             element: document.body,
             actions: this.actions,
             isInteractive: (target) => !!(target && target.closest && (target.closest('#gui') || target.closest('#gui-toggle'))),
+        });
+
+        this.gui = new GUIController({
+            root: document.getElementById('gui'),
+            state: this.state,
+            actions: this.actions,
+            lineup: SCENE_DEFINITIONS,
+            getDebugState: () => ({ stats: this.statsVisible, audioOverlay: this.showOverlay }),
         });
 
         document.addEventListener('dblclick', this.onDoubleClick);
@@ -179,6 +197,7 @@ class App {
             this.sceneManager.activate(state.sceneIndex);
         }
         this.sceneManager.setActiveVariant(state.getVariantIndex(def.id));
+        if (this.gui) this.gui.sync(state);
         saveControlState(localStorage, state.toJSON());
     }
 
@@ -209,8 +228,14 @@ class App {
             case 'ShiftLeft': // SHIFT
             case 'ShiftRight':
                 if (this.debug) {
-                    this.showOverlay ? this.hideDebugDraw() : this.showDebugDraw();
-                    this.showOverlay = !this.showOverlay;
+                    if (this.showOverlay) {
+                        this.hideDebugOverlay();
+                        this.hideStats();
+                    } else {
+                        this.showDebugOverlay();
+                        this.showStats();
+                    }
+                    if (this.gui) this.gui.sync(this.state);
                 }
                 break;
             case 'Enter':
@@ -274,22 +299,40 @@ class App {
 
     hideStats() {
         this.stats.showPanel(5);
+        this.statsVisible = false;
     }
 
     showStats() {
         this.stats.showPanel(0);
+        this.statsVisible = true;
     }
 
-    showDebugDraw() {
+    showDebugOverlay() {
         document.getElementById('audio-debug-holder').style.display = 'block';
         this.audioHandler.analyzer.setDrawEnabled(true);
-        this.showStats();
+        this.showOverlay = true;
     }
 
-    hideDebugDraw() {
+    hideDebugOverlay() {
         document.getElementById('audio-debug-holder').style.display = 'none';
         this.audioHandler.analyzer.setDrawEnabled(false);
-        this.hideStats();
+        this.showOverlay = false;
+    }
+
+    toggleStats() {
+        if (this.statsVisible) this.hideStats();
+        else this.showStats();
+        if (this.gui) this.gui.sync(this.state);
+    }
+
+    toggleAudioDebug() {
+        if (this.showOverlay) this.hideDebugOverlay();
+        else this.showDebugOverlay();
+        if (this.gui) this.gui.sync(this.state);
+    }
+
+    toggleGui() {
+        if (this.gui) this.gui.toggle();
     }
 }
 
