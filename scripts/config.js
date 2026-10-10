@@ -53,6 +53,7 @@ export const BEAT_REFRACTORY_SECONDS = 0.12;
 export const BEAT_PULSE = 0.15;
 
 // Control state / drift
+export const STORAGE_KEY = 'audioviz.control.v1';
 export const DRIFT_DEFAULT_SPEED_SECONDS = 60;
 export const DRIFT_SPEED_OPTIONS = [30, 60, 120];
 export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
