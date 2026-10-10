@@ -18,9 +18,11 @@ import { SCENE_DEFINITIONS } from '../scenes/index.js';
 import { ControlState } from './ControlState.js';
 import { SceneManager } from './SceneManager.js';
 import { loadControlState, saveControlState } from './Persistence.js';
+import { NameFlash } from './NameFlash.js';
+import { KeyboardController } from './KeyboardController.js';
 import {
     FFT_SIZE, AUDIO_LEVELS, MAX_DELTA_TIME,
-    MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE,
+    MAX_PIXEL_RATIO_DESKTOP, MAX_PIXEL_RATIO_MOBILE, NAME_FLASH_MS,
 } from '../config.js';
 
 class App {
@@ -33,6 +35,10 @@ class App {
         this.state = null;
         this.sceneManager = null;
         this.unsubscribe = null;
+        this.nameFlash = null;
+        this.keyboard = null;
+        this.actions = null;
+        this.gui = null;
 
         this.audioType = null;
         this.showOverlay = false;
@@ -101,11 +107,56 @@ class App {
         this.unsubscribe = this.state.subscribe((s) => this.applyState(s));
         this.applyState(this.state);
 
+        this.nameFlash = new NameFlash(document.getElementById('name-flash'), NAME_FLASH_MS);
+        this.actions = {
+            'scene-next': () => this.changeScene(1),
+            'scene-prev': () => this.changeScene(-1),
+            'variant-next': () => this.changeVariant(1),
+            'variant-prev': () => this.changeVariant(-1),
+            'drift-toggle': () => this.toggleDrift(),
+            'gui-toggle': () => { if (this.gui) this.gui.toggle(); },
+        };
+        this.keyboard = new KeyboardController({
+            actions: this.actions,
+            isGuiFocused: (event) => this.isGuiFocused(event),
+        });
+
         document.addEventListener('dblclick', this.onDoubleClick);
         window.addEventListener('resize', this.onWindowResize);
         window.addEventListener('keyup', this.onKeyUp);
 
         this.animate();
+    }
+
+    activeSceneId() {
+        const def = SCENE_DEFINITIONS[this.state.sceneIndex];
+        return def ? def.id : null;
+    }
+
+    changeScene(dir) {
+        const index = dir > 0 ? this.state.nextScene() : this.state.prevScene();
+        const def = SCENE_DEFINITIONS[index];
+        if (def) this.nameFlash.show(def.name);
+    }
+
+    changeVariant(dir) {
+        const id = this.activeSceneId();
+        if (!id) return;
+        const index = dir > 0 ? this.state.nextVariant(id) : this.state.prevVariant(id);
+        const def = SCENE_DEFINITIONS[this.state.sceneIndex];
+        const variant = def ? def.variants[index] : null;
+        if (variant) this.nameFlash.show(`${def.name} — ${variant.name}`);
+    }
+
+    toggleDrift() {
+        const enabled = !this.state.drift.enabled;
+        this.state.setDriftEnabled(enabled);
+        this.nameFlash.show(enabled ? 'Drift on' : 'Drift off');
+    }
+
+    isGuiFocused() {
+        const el = document.activeElement;
+        return !!(el && el.closest && el.closest('#gui'));
     }
 
     /** Keep the SceneManager and persistence in step with ControlState. */
@@ -141,6 +192,7 @@ class App {
     }
 
     onKeyUp(event) {
+        if (this.isGuiFocused(event)) return;
         switch (event.code) {
             case 'ShiftLeft': // SHIFT
             case 'ShiftRight':

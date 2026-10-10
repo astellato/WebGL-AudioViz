@@ -196,3 +196,25 @@ a, button, input, select {
 	top:0;
 }
 
+/* NAME FLASH */
+
+#name-flash{
+	position: fixed;
+	right: 16px;
+	bottom: 16px;
+	z-index: 4;
+	font-size: 14px;
+	letter-spacing: 0.05em;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.55);
+	padding: 6px 12px;
+	border-radius: 4px;
+	opacity: 0;
+	transition: opacity 0.4s ease;
+	pointer-events: none;
+}
+
+#name-flash.visible{
+	opacity: 1;
+}
+

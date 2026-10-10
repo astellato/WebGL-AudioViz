@@ -60,3 +60,6 @@ export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
 
 // Mobile swipe
 export const SWIPE_THRESHOLD_PX = 40;
+
+// Name flash
+export const NAME_FLASH_MS = 1600;
