@@ -103,13 +103,21 @@ class App {
             }
 
             const result = await this.audioHandler.setSource(input);
-            if (!result.ok) return false;
+            const overlay = document.getElementById('overlay');
 
-            this.audioType = input;
-            saveAudioSource(localStorage, input);
+            if (result.ok) {
+                this.audioType = input;
+                saveAudioSource(localStorage, input);
+            } else if (overlay) {
+                // First visit: keep the overlay up so the user can try another button.
+                return false;
+            }
+            // A reload with a failed source still enters the app (no source), so the
+            // GUI and the click/tap hint give the user a way to retry.
+
             this.finishInit();
             this.initialized = true;
-            return true;
+            return result.ok;
         } finally {
             this._beginPending = false;
         }
@@ -375,12 +383,15 @@ class App {
 
     /** Switch the live source from the GUI, then persist and re-sync. */
     async setAudioSource(input) {
-        if (!this.audioHandler) return;
+        if (!this.audioHandler) return false;
+        // A retry can happen after the browser re-suspended the context.
+        this.audioHandler.resumeAudioContext();
         const result = await this.audioHandler.setSource(input);
         if (result.ok) {
             saveAudioSource(localStorage, input);
         }
         if (this.gui) this.gui.sync(this.state);
+        return result.ok;
     }
 
     getAudioState() {

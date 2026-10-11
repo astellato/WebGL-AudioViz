@@ -154,3 +154,17 @@ it('does not fire onSourceEnded when we stop sharing ourselves', async () => {
   expect(ended).not.toHaveBeenCalled();
   expect(track.onended).toBeNull();
 });
+
+it('keeps the default track playing when it is re-selected within the fade', async () => {
+  vi.useFakeTimers();
+  const h = new AudioHandler();
+  await h.setSource(AUDIOINPUTS.DEFAULT);
+  expect(h.audio.isPlaying).toBe(true);
+
+  await h.setSource(AUDIOINPUTS.MIC);
+  vi.advanceTimersByTime(AUDIO_FADE_SECONDS * 1000 / 2);
+  await h.setSource(AUDIOINPUTS.DEFAULT);
+  vi.advanceTimersByTime(AUDIO_FADE_SECONDS * 1000);
+
+  expect(h.audio.isPlaying).toBe(true);
+});

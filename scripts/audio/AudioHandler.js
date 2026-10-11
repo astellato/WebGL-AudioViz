@@ -266,8 +266,12 @@ class AudioHandler {
 
     _teardown(feed){
         if(!feed) return;
+        // A deferred teardown can fire after a newer switch; never tear down the
+        // feed that is now active (e.g. default re-selected within the fade).
+        if(this._active === feed) return;
         if(feed.source === AUDIOINPUTS.DEFAULT){
-            this.audio.pause();
+            // Stop the shared track only if the default isn't the live source again.
+            if(this._currentSource !== AUDIOINPUTS.DEFAULT) this.audio.pause();
             return;
         }
         this._stopStream(feed.stream);

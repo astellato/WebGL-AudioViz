@@ -43,13 +43,19 @@ if (remembered === null || !hasWebGL2()) {
     hint.style.display = 'block';
 
     const start = async () => {
-        window.removeEventListener('pointerdown', start);
-        window.removeEventListener('click', start);
-        window.removeEventListener('keydown', start);
-        window.removeEventListener('touchstart', start);
-        const ok = await app.begin(remembered);
-        if (ok) hint.style.display = 'none';
-        // on failure the hint stays up so the user can click again to retry
+        // Enter the app on the first interaction; once it exists, a click retries
+        // the remembered source instead of re-entering.
+        const ok = app.initialized
+            ? await app.setAudioSource(remembered)
+            : await app.begin(remembered);
+        if (ok) {
+            hint.style.display = 'none';
+            window.removeEventListener('pointerdown', start);
+            window.removeEventListener('click', start);
+            window.removeEventListener('keydown', start);
+            window.removeEventListener('touchstart', start);
+        }
+        // On failure the hint and its listeners stay so the user can click again.
     };
     window.addEventListener('pointerdown', start);
     window.addEventListener('click', start);
