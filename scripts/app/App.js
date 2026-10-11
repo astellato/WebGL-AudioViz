@@ -104,7 +104,11 @@ class App {
         // under the browser autoplay policy
         this.audioHandler.resumeAudioContext();
 
-        const sceneDefs = SCENE_DEFINITIONS.map((d) => ({ id: d.id, variantCount: d.variants.length }));
+        const sceneDefs = SCENE_DEFINITIONS.map((d) => ({
+            id: d.id,
+            variantCount: d.variants.length,
+            randomStartVariant: d.randomStartVariant,
+        }));
         this.state = new ControlState(sceneDefs, loadControlState(localStorage, sceneDefs));
 
         this.sceneManager = new SceneManager(SCENE_DEFINITIONS, {

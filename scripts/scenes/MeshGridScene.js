@@ -155,6 +155,7 @@ class MeshGridScene extends ThreeVisualizer {
 const meshGridSceneDefinition = {
     id: 'meshgrid',
     name: 'Mesh Grid',
+    randomStartVariant: true,
     variants: VARIANTS,
     create: (ctx) => new MeshGridScene({
         id: 'meshgrid',

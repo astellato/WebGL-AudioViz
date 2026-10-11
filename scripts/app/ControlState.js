@@ -19,6 +19,10 @@ function clampInt(value, min, max, fallback) {
     return Math.min(Math.max(n, min), max);
 }
 
+function randomIndex(count) {
+    return Math.floor(Math.random() * count);
+}
+
 function defaultDrift() {
     return { enabled: false, speedSeconds: DRIFT_DEFAULT_SPEED_SECONDS, scope: 'visualizers' };
 }
@@ -26,15 +30,25 @@ function defaultDrift() {
 class ControlState {
 
     /**
-     * @param {Array<{id: string, variantCount: number}>} sceneDefs lineup shape
+     * @param {Array<{id: string, variantCount: number, randomStartVariant?: boolean}>} sceneDefs lineup shape
      * @param {{sceneIndex?: number, variantIndexByScene?: object, drift?: object}} [persisted]
      */
     constructor(sceneDefs = [], persisted = null) {
-        this.sceneDefs = sceneDefs.map((d) => ({ id: d.id, variantCount: Math.max(1, Math.trunc(d.variantCount) || 1) }));
+        this.sceneDefs = sceneDefs.map((d) => ({
+            id: d.id,
+            variantCount: Math.max(1, Math.trunc(d.variantCount) || 1),
+            randomStartVariant: Boolean(d.randomStartVariant),
+        }));
 
         this._variantIndex = {};
         for (const d of this.sceneDefs) {
-            this._variantIndex[d.id] = clampInt(persisted?.variantIndexByScene?.[d.id], 0, d.variantCount - 1, 0);
+            const saved = persisted?.variantIndexByScene?.[d.id];
+            // A scene that opts in starts on a random variant the first time it
+            // is seen; once a choice is saved it is remembered like any other.
+            const fallback = (saved === undefined && d.randomStartVariant)
+                ? randomIndex(d.variantCount)
+                : 0;
+            this._variantIndex[d.id] = clampInt(saved, 0, d.variantCount - 1, fallback);
         }
 
         this._sceneIndex = clampInt(persisted?.sceneIndex, 0, Math.max(0, this.sceneDefs.length - 1), 0);

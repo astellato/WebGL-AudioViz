@@ -102,6 +102,7 @@ class TunnelScene extends ThreeVisualizer {
 const tunnelSceneDefinition = {
     id: 'tunnel',
     name: 'Audio Tunnel',
+    randomStartVariant: true,
     variants: VARIANTS,
     create: (ctx) => new TunnelScene({
         id: 'tunnel',

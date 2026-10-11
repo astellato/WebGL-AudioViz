@@ -215,6 +215,7 @@ const variants = VARIANTS;
 const blobSceneDefinition = {
     id: 'blob',
     name: 'Blob',
+    randomStartVariant: true,
     variants,
     create: (ctx) => new BlobScene({
         id: 'blob',

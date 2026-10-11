@@ -159,6 +159,7 @@ class ParticleDanceScene extends ThreeVisualizer {
 const particleDanceSceneDefinition = {
     id: 'particles',
     name: 'Particle Dance',
+    randomStartVariant: true,
     variants: VARIANTS,
     create: (ctx) => new ParticleDanceScene({
         id: 'particles',

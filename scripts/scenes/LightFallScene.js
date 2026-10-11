@@ -139,6 +139,7 @@ class LightFallScene extends ThreeVisualizer {
 const lightFallSceneDefinition = {
     id: 'lightfall',
     name: 'Light Fall',
+    randomStartVariant: true,
     variants: VARIANTS,
     create: (ctx) => new LightFallScene({
         id: 'lightfall',

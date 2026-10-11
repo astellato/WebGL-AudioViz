@@ -191,6 +191,7 @@ class ButterchurnScene {
 const butterchurnSceneDefinition = {
     id: 'butterchurn',
     name: 'Butterchurn',
+    randomStartVariant: true,
     variants: VARIANTS,
     create: (ctx) => new ButterchurnScene({
         id: 'butterchurn',
