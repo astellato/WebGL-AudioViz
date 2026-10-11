@@ -31,4 +31,27 @@ function hasWebGL2(createCanvas = () => document.createElement('canvas')){
     }
 }
 
-export { isMobile, isIOS, clamp, checkIsNan, hasWebGL2 };
+// Source capability probes. Both answer false rather than throw when the API
+// is missing (older browsers, non-secure contexts, non-browser tests).
+function hasMicrophone(){
+    try {
+        return typeof navigator !== 'undefined'
+            && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    } catch {
+        return false;
+    }
+}
+
+// Tab audio is desktop-only: phones have no tabs to share and the picker API is
+// absent or useless there.
+function hasTabAudioCapture(){
+    try {
+        return typeof navigator !== 'undefined'
+            && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
+            && !isMobile();
+    } catch {
+        return false;
+    }
+}
+
+export { isMobile, isIOS, clamp, checkIsNan, hasWebGL2, hasMicrophone, hasTabAudioCapture };
