@@ -179,15 +179,9 @@ class AudioHandler {
         if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
             return Promise.reject(new Error('Tab audio capture is not supported in this browser.'));
         }
-        const request = (constraints) => navigator.mediaDevices.getDisplayMedia(constraints);
-        // Prefer audio-only. Fall back to requesting a video surface only when the
-        // browser rejects the constraints themselves; a user cancel
-        // (NotAllowedError) must not re-open the picker.
-        return request({ audio: true, video: false })
-            .catch((error) => {
-                if(error && error.name === 'TypeError') return request({ audio: true, video: true });
-                throw error;
-            })
+        // getDisplayMedia requires a video track: Chrome rejects audio-only with
+        // TypeError or NotSupportedError. Request video and drop it immediately.
+        return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
             .then((stream) => {
                 for(const video of (stream.getVideoTracks ? stream.getVideoTracks() : [])){
                     try { video.stop(); } catch { /* already gone */ }

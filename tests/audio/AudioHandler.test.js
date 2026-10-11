@@ -120,6 +120,20 @@ it('treats a display stream with no audio track as a failure', async () => {
   expect(h.getSource()).toBe(AUDIOINPUTS.DEFAULT);
 });
 
+it('requests a video track for tab capture (Chrome requires one) and drops it', async () => {
+  const h = new AudioHandler();
+  const video = { stop: vi.fn() };
+  const track = { stop: vi.fn(), onended: null };
+  const stream = { getAudioTracks: () => [track], getVideoTracks: () => [video], getTracks: () => [video, track] };
+  navigator.mediaDevices.getDisplayMedia = vi.fn().mockResolvedValue(stream);
+
+  const res = await h.setSource(AUDIOINPUTS.TAB);
+  expect(res.ok).toBe(true);
+  expect(navigator.mediaDevices.getDisplayMedia).toHaveBeenCalledTimes(1);
+  expect(navigator.mediaDevices.getDisplayMedia.mock.calls[0][0].video).toBe(true);
+  expect(video.stop).toHaveBeenCalled();
+});
+
 it('stops every track and clears the source when the user ends sharing', async () => {
   const h = new AudioHandler();
   const track = { stop: vi.fn(), onended: null };
