@@ -218,6 +218,24 @@ a, button, input, select {
 	opacity: 1;
 }
 
+/* CLICK/TAP HINT (reload start gate) */
+#audio-hint{
+	display: none;
+	position: fixed;
+	left: 50%;
+	bottom: 32px;
+	transform: translateX(-50%);
+	z-index: 7;
+	font-size: 14px;
+	letter-spacing: 0.03em;
+	color: #fff;
+	background: rgba(0, 0, 0, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 6px;
+	padding: 10px 18px;
+	pointer-events: none; /* never block the gesture it asks for */
+}
+
 /* GUI TOGGLE (touch devices only; desktop uses the H key) */
 #gui-toggle{
 	display: none;

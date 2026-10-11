@@ -31,4 +31,34 @@ function hasWebGL2(createCanvas = () => document.createElement('canvas')){
     }
 }
 
-export { isMobile, isIOS, clamp, checkIsNan, hasWebGL2 };
+// Source capability probes. Both answer false rather than throw when the API
+// is missing (older browsers, non-secure contexts, non-browser tests).
+function hasMicrophone(){
+    try {
+        return typeof navigator !== 'undefined'
+            && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    } catch {
+        return false;
+    }
+}
+
+// Only Chromium engines actually capture audio with getDisplayMedia; Firefox and
+// Safari expose the API but ignore audio, so offering it there only fails.
+function isChromium(){
+    return /Chrome|Chromium|Edg\//i.test(navigator.userAgent || '');
+}
+
+// Tab audio is desktop Chromium only: phones have no tabs to share, and
+// non-Chromium engines return a stream with no audio track.
+function hasTabAudioCapture(){
+    try {
+        return typeof navigator !== 'undefined'
+            && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
+            && isChromium()
+            && !isMobile();
+    } catch {
+        return false;
+    }
+}
+
+export { isMobile, isIOS, clamp, checkIsNan, hasWebGL2, hasMicrophone, hasTabAudioCapture };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadControlState, saveControlState } from '../../scripts/app/Persistence.js';
+import { loadControlState, saveControlState, loadAudioSource, saveAudioSource } from '../../scripts/app/Persistence.js';
 
 const defs = [{ id: 'a', variantCount: 3 }, { id: 'b', variantCount: 2 }];
 const defaults = { sceneIndex: 0, variantIndexByScene: {}, drift: { enabled: false, speedSeconds: 60, scope: 'visualizers' } };
@@ -23,4 +23,18 @@ it('round-trips through save/load', () => {
   const s = { getItem: () => written, setItem: (_k, v) => { written = v; } };
   saveControlState(s, { sceneIndex: 1, variantIndexByScene: { b: 1 }, drift: { enabled: true, speedSeconds: 120, scope: 'both' } });
   expect(loadControlState(s, defs).variantIndexByScene).toEqual({ b: 1 });
+});
+
+it('round-trips the audio source choice', () => {
+  let written = null;
+  const s = { getItem: () => written, setItem: (_k, v) => { written = v; } };
+  saveAudioSource(s, 2);
+  expect(loadAudioSource(s)).toBe(2);
+});
+
+it('loads null for missing, corrupt, unknown or NONE values', () => {
+  expect(loadAudioSource({ getItem: () => null })).toBeNull();
+  expect(loadAudioSource({ getItem: () => '{not json' })).toBeNull();
+  expect(loadAudioSource({ getItem: () => JSON.stringify({ source: 99 }) })).toBeNull();
+  expect(loadAudioSource({ getItem: () => JSON.stringify({ source: 0 }) })).toBeNull();
 });

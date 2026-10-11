@@ -9,8 +9,9 @@
 */
 
 import {
-    STORAGE_KEY, DRIFT_DEFAULT_SPEED_SECONDS, DRIFT_SPEED_OPTIONS, DRIFT_SCOPES,
+    STORAGE_KEY, AUDIO_STORAGE_KEY, DRIFT_DEFAULT_SPEED_SECONDS, DRIFT_SPEED_OPTIONS, DRIFT_SCOPES,
 } from '../config.js';
+import { CHOOSABLE_SOURCES } from '../audio/audioSources.js';
 
 function clampInt(value, min, max, fallback) {
     const n = Math.trunc(Number(value));
@@ -92,4 +93,43 @@ function saveControlState(storage, state) {
     }
 }
 
-export { loadControlState, saveControlState };
+/**
+ * The remembered audio source, or null when nothing valid is stored (so the
+ * caller shows the start overlay, or falls back to Default music).
+ * @param {{getItem: Function}} [storage]
+ * @returns {number|null}
+ */
+function loadAudioSource(storage) {
+    const store = getStorage(storage);
+    if (!store) return null;
+
+    let raw = null;
+    try {
+        raw = store.getItem(AUDIO_STORAGE_KEY);
+    } catch {
+        return null;
+    }
+    if (!raw) return null;
+
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+
+    const source = parsed && parsed.source;
+    return CHOOSABLE_SOURCES.includes(source) ? source : null;
+}
+
+function saveAudioSource(storage, input) {
+    const store = getStorage(storage);
+    if (!store) return;
+    try {
+        store.setItem(AUDIO_STORAGE_KEY, JSON.stringify({ source: input }));
+    } catch {
+        // private-browsing / quota: persistence is best-effort
+    }
+}
+
+export { loadControlState, saveControlState, loadAudioSource, saveAudioSource };

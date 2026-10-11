@@ -9,6 +9,7 @@
 */
 
 import { DRIFT_SPEED_OPTIONS, DRIFT_SCOPES } from '../config.js';
+import { AUDIOINPUTS, AUDIO_SOURCE_LABELS } from '../audio/audioSources.js';
 
 function el(tag, attrs = {}, children = []) {
     const node = document.createElement(tag);
@@ -28,12 +29,13 @@ function option(value, label) {
 
 class GUIController {
 
-    constructor({ root, state, actions, lineup = [], getDebugState = () => ({}) }) {
+    constructor({ root, state, actions, lineup = [], getDebugState = () => ({}), getAudioState = () => ({ source: AUDIOINPUTS.DEFAULT, tabSupported: false }) }) {
         this.root = root;
         this.state = state;
         this.actions = actions;
         this.lineup = lineup;
         this.getDebugState = getDebugState;
+        this.getAudioState = getAudioState;
         this.isOpen = false;
         this._build();
         this.sync(state);
@@ -42,6 +44,10 @@ class GUIController {
     _build() {
         this.root.innerHTML = '';
         this.root.classList.add('hidden');
+
+        // Audio source
+        this.sourceSelect = el('select', { id: 'gui-source' });
+        this.sourceSelect.addEventListener('change', () => this.actions.setAudioSource(Number(this.sourceSelect.value)));
 
         // Drift
         this.driftEnabled = el('input', { type: 'checkbox', id: 'gui-drift-enabled' });
@@ -75,6 +81,10 @@ class GUIController {
         ]));
 
         this.root.appendChild(el('div', { class: 'gui-section' }, [
+            el('label', { class: 'gui-row' }, [el('span', { text: 'Source' }), this.sourceSelect]),
+        ]));
+
+        this.root.appendChild(el('div', { class: 'gui-section' }, [
             el('label', { class: 'gui-row' }, [el('span', { text: 'Drift' }), this.driftEnabled]),
             el('label', { class: 'gui-row' }, [el('span', { text: 'Speed' }), this.driftSpeed]),
             el('label', { class: 'gui-row' }, [el('span', { text: 'Scope' }), this.driftScope]),
@@ -92,6 +102,18 @@ class GUIController {
     }
 
     sync(state) {
+        const audio = this.getAudioState();
+        this.sourceSelect.innerHTML = '';
+        if (audio.source === AUDIOINPUTS.NONE) {
+            this.sourceSelect.appendChild(option(String(AUDIOINPUTS.NONE), 'Stopped'));
+        }
+        this.sourceSelect.appendChild(option(String(AUDIOINPUTS.DEFAULT), AUDIO_SOURCE_LABELS[AUDIOINPUTS.DEFAULT]));
+        this.sourceSelect.appendChild(option(String(AUDIOINPUTS.MIC), AUDIO_SOURCE_LABELS[AUDIOINPUTS.MIC]));
+        if (audio.tabSupported) {
+            this.sourceSelect.appendChild(option(String(AUDIOINPUTS.TAB), AUDIO_SOURCE_LABELS[AUDIOINPUTS.TAB]));
+        }
+        this.sourceSelect.value = String(audio.source);
+
         this.driftEnabled.checked = state.drift.enabled;
         this.driftSpeed.value = String(state.drift.speedSeconds);
         this.driftScope.value = state.drift.scope;
