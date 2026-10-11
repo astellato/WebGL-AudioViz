@@ -11,6 +11,10 @@
 
 import { SlidingAverage } from '../SlidingAverage.js';
 import { clamp, checkIsNan } from '../Utils.js';
+import { BeatDetector } from './BeatDetector.js';
+import {
+    BEAT_WINDOW_SECONDS, BEAT_MARGIN, BEAT_FLUX_FLOOR, BEAT_REFRACTORY_SECONDS,
+} from '../config.js';
 
 class AudioAnalyzer {
 
@@ -24,6 +28,7 @@ class AudioAnalyzer {
 		this.freqByteData = new Uint8Array( this.analyser.frequencyBinCount ); // fft raw data
         this.timeByteData = new Uint8Array( this.analyser.frequencyBinCount ); // wave raw data
         this.binCount = this.analyser.frequencyBinCount;
+        this.spectrum = new Float32Array( this.binCount ); // normalized magnitude spectrum (0..1)
 
         this.rawTotalPower = 0;
         this.levelsCount = _levelsCount;
@@ -50,6 +55,14 @@ class AudioAnalyzer {
 		this.gradient = null;
 		this.isDebug = _debug;
 		this.drawEnabled = false; // debug canvases are hidden until the overlay is shown
+
+		this.beatDetector = new BeatDetector({
+			windowSeconds: BEAT_WINDOW_SECONDS,
+			margin: BEAT_MARGIN,
+			floor: BEAT_FLUX_FLOOR,
+			refractorySeconds: BEAT_REFRACTORY_SECONDS,
+			levelsCount: this.levelsCount,
+		});
 
 		this.init();
 
@@ -142,6 +155,12 @@ class AudioAnalyzer {
 		this.totalPeak = clamp((this.rawTotalPower > this.totalPeak) ? this.rawTotalPower : this.totalPeak - adjustedPeakDecay, 0.1, 1);
 		this.relativeTotal = this.totalPeak > 0.0 ? checkIsNan(this.totalSlidingAverage.getAverage()/this.totalPeak) : 0.0;
 
+		// NORMALIZED SPECTRUM + BEAT DETECTION
+		for(let i = 0; i < this.binCount; i++){
+			this.spectrum[i] = this.freqByteData[i] / 255;
+		}
+		this.beatDetector.update(this.spectrum, deltaTime);
+
 		// only draw the debug canvases while the debug overlay is actually visible
 		if(this.isDebug && this.drawEnabled){
 			this.debugDraw();
@@ -154,6 +173,14 @@ class AudioAnalyzer {
 
 	getAverage(idx){
 		return this.slidingAverages[idx].getAverage() || 0.0;
+	}
+
+	getSpectrum(){
+		return this.spectrum;
+	}
+
+	getBeat(){
+		return this.beatDetector.packet;
 	}
 
 	debugDraw(){
@@ -213,6 +240,15 @@ class AudioAnalyzer {
 		// DRAW RELATIVE POWER
 		avgCtx.fillStyle="#F00";
 		avgCtx.fillRect(relativeMaxW, displayH, this.totalBarW, -this.relativeTotal * displayH);
+
+		// DRAW BEAT INDICATOR (pulse on onset, positioned at the spectral location)
+		const beat = this.beatDetector.packet;
+		if(beat.onBeat){
+			avgCtx.fillStyle = "#ffdd00";
+			avgCtx.beginPath();
+			avgCtx.arc(beat.location * displayW, 12, 4 + beat.strength * 8, 0, Math.PI * 2);
+			avgCtx.fill();
+		}
 	}
 
 }
