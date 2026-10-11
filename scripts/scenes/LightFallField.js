@@ -115,4 +115,85 @@ function canyonPoint(field, track, s, out) {
     return out;
 }
 
-export { createTrailField, canyonPoint };
+export {
+    createTrailField, canyonPoint,
+    canyonTangent, canyonLateral, rippleAmount, advancePhotons,
+};
+
+/**
+ * Unit tangent of a trail at `s` (the Bézier derivative, normalised).
+ *
+ * @returns {{x:number,y:number,z:number}} `out`
+ */
+function canyonTangent(field, track, s, out) {
+    const { p0, p1, p2, p3 } = controlPoints(field, track, {}, {}, {});
+    const u = 1 - s;
+
+    const a = 3 * u * u;
+    const b = 6 * u * s;
+    const c = 3 * s * s;
+
+    out.x = a * (p1.x - p0.x) + b * (p2.x - p1.x) + c * (p3.x - p2.x);
+    out.y = a * (p1.y - p0.y) + b * (p2.y - p1.y) + c * (p3.y - p2.y);
+    out.z = a * (p1.z - p0.z) + b * (p2.z - p1.z) + c * (p3.z - p2.z);
+
+    const length = Math.hypot(out.x, out.y, out.z);
+    if (length < 1e-6) {
+        out.x = 0; out.y = 0; out.z = -1;
+        return out;
+    }
+    out.x /= length; out.y /= length; out.z /= length;
+    return out;
+}
+
+/**
+ * Unit lateral of a trail at `s`: perpendicular to the tangent and turned to
+ * face the camera at the origin. Used as the ribbon's width direction and the
+ * ripple's displacement direction.
+ *
+ * @returns {{x:number,y:number,z:number}} `out`
+ */
+function canyonLateral(field, track, s, out) {
+    const point = canyonPoint(field, track, s, {});
+    const tangent = canyonTangent(field, track, s, {});
+
+    // view direction from the point to the camera at the origin
+    const viewLength = Math.hypot(point.x, point.y, point.z) || 1;
+    const vx = -point.x / viewLength;
+    const vy = -point.y / viewLength;
+    const vz = -point.z / viewLength;
+
+    // cross(tangent, viewDir)
+    out.x = tangent.y * vz - tangent.z * vy;
+    out.y = tangent.z * vx - tangent.x * vz;
+    out.z = tangent.x * vy - tangent.y * vx;
+
+    const length = Math.hypot(out.x, out.y, out.z);
+    if (length < 1e-6) {
+        out.x = 1; out.y = 0; out.z = 0;
+        return out;
+    }
+    out.x /= length; out.y /= length; out.z /= length;
+    return out;
+}
+
+/**
+ * Scalar ripple displacement at `s` on a trail. `ripple` is the current
+ * amplitude (0 when no ripple is active) and `time` advances the wave. This is
+ * the single source of the ripple formula; the trail vertex shader mirrors it.
+ */
+function rippleAmount(field, track, s, ripple, time) {
+    return ripple * Math.sin(s * field.rippleFreq + field.phase[track] + time);
+}
+
+/**
+ * Advance each photon's progress along its trail toward the near mouth and wrap
+ * it into [0,1). Never reads/writes anything but `state`.
+ */
+function advancePhotons(field, state, deltaTime, speed) {
+    for (let i = 0; i < state.count; i++) {
+        const v = state.s[i] - speed * state.speed[i] * deltaTime;
+        state.s[i] = v - Math.floor(v);
+    }
+}
+
