@@ -24,9 +24,9 @@ const QUALITY = {
 
 // Curve tuning. Apex coordinates live on the field default; these ride on top.
 const CURVE = {
-    nearRadius: 4.2,
-    nearZ: 1.4,
-    apexY: 3.6,
+    nearRadius: 6.5,
+    nearZ: -2.5,
+    apexY: 4.6,
     apexZ: -30,
     bendUp: 6.0,
     bendForward: 8.0,
@@ -35,17 +35,18 @@ const CURVE = {
     rippleFreq: 6.0,
 };
 
-const TRAIL_WIDTH = 0.05;
-const TRAIL_GAIN_BASE = 0.5;
+const TRAIL_WIDTH = 0.012;
+const TRAIL_GAIN_BASE = 0.85;
 
-const PHOTON_WIDTH = 0.07;
-const PHOTON_LENGTH = 0.55;
+const PHOTON_WIDTH = 0.06;
+const PHOTON_LENGTH = 0.95;
 const PHOTON_SPEED = 0.16;
 const BEAT_SPREAD = 0.13;
 
 // The trails only bend when level + beat strength gets past this — deliberately
 // hard to reach so quiet music never ripples.
-const RIPPLE_THRESHOLD = 1.15;
+const RIPPLE_THRESHOLD = 1.78;
+const RIPPLE_AMP = 0.22;
 const RIPPLE_DECAY = 1.6;
 const RIPPLE_SPEED = 3.0;
 
@@ -169,7 +170,7 @@ class LightFallScene extends ThreeVisualizer {
     configurePostProcess(handler) {
         handler.addRenderPass(this.scene, this.camera);
         // runs inside super(), before this.p is assigned -> use the default variant
-        handler.addUnrealBloomPass(VARIANTS[0].params.bloom, 0.7, 0.15);
+        handler.addUnrealBloomPass(VARIANTS[0].params.bloom, 0.7, 0.6);
         handler.addOutputPass();
         handler.setSize(this.context.width, this.context.height, this.context.pixelRatio || 1);
     }
@@ -198,7 +199,7 @@ class LightFallScene extends ThreeVisualizer {
 
         // camera sits at the mouth of the canyon, looking in and slightly up
         this.camera.position.set(0, 0, 0);
-        this.camera.lookAt(0, 1.0, -10);
+        this.camera.lookAt(0, 1.6, -10);
     }
 
     _buildTrails(quality) {
@@ -280,6 +281,7 @@ class LightFallScene extends ThreeVisualizer {
             uniforms: this.uniforms,
             transparent: true,
             blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
             depthWrite: false,
         });
 
@@ -380,18 +382,19 @@ class LightFallScene extends ThreeVisualizer {
         }
         this.ripple = Math.max(0, this.ripple - deltaTime * RIPPLE_DECAY);
 
-        this.uniforms.uRipple.value = this.ripple;
+        const rippleAmp = this.ripple * RIPPLE_AMP;
+        this.uniforms.uRipple.value = rippleAmp;
         this.uniforms.uRippleTime.value = this.rippleTime;
         this.uniforms.uTrailGain.value = TRAIL_GAIN_BASE * this.p.trailGain * (0.85 + relative * 0.3);
 
-        this._updatePhotons(relative, flash, beatLocation, spectrum, deltaTime);
+        this._updatePhotons(relative, flash, beatLocation, spectrum, deltaTime, rippleAmp);
 
         if (this.postProcess && this.postProcess.unrealBloomPass) {
             this.postProcess.unrealBloomPass.strength = this.p.bloom * (1 + relative * 0.8 + flash * 1.2);
         }
     }
 
-    _updatePhotons(relative, flash, beatLocation, spectrum, deltaTime) {
+    _updatePhotons(relative, flash, beatLocation, spectrum, deltaTime, rippleAmp) {
         const field = this.field;
         const state = this.photonState;
         const spectrumMax = spectrum.length - 1;
@@ -404,7 +407,7 @@ class LightFallScene extends ThreeVisualizer {
         const p2 = this._p2;
         const lat = this._lat;
         const tan = this._tan;
-        const ripple = this.ripple;
+        const ripple = rippleAmp;
 
         for (let i = 0; i < state.count; i++) {
             const track = state.track[i];
@@ -468,7 +471,7 @@ class LightFallScene extends ThreeVisualizer {
             this.photonMesh.setMatrixAt(i, this._obj.matrix);
 
             const baseColor = this.trailPalette[track % this.trailPalette.length];
-            this._color.copy(baseColor).lerp(this._photonTint, 0.35 + Math.min(0.4, brightness * 0.3));
+            this._color.copy(baseColor).lerp(this._photonTint, 0.2 + Math.min(0.25, brightness * 0.2));
             colors[i * 3] = this._color.r * brightness;
             colors[i * 3 + 1] = this._color.g * brightness;
             colors[i * 3 + 2] = this._color.b * brightness;

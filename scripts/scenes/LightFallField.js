@@ -13,15 +13,19 @@
 const DEFAULTS = {
     trailCount: 84,
     segments: 48,
-    nearRadius: 4.2,
-    nearZ: 1.4,
-    apexY: 3.6,
+    nearRadius: 5.0,
+    nearZ: -2.5,
+    apexY: 4.6,
     apexZ: -30,
     bendUp: 6.0,
     bendForward: 8.0,
     apexDrop: 10.0,
     apexBack: 10.0,
     rippleFreq: 6.0,
+    // near ends span the lower arc of the ring, so the trails read as a canyon
+    // fanning up from below the viewer rather than a symmetric starburst
+    angleStart: -Math.PI * 1.1,
+    angleEnd: Math.PI * 0.1,
 };
 
 /**
@@ -46,14 +50,15 @@ function createTrailField(options = {}) {
     const spectral = new Float32Array(trailCount);
 
     for (let i = 0; i < trailCount; i++) {
-        // spread the near ends around the view axis, starting at the bottom
-        const angle = -Math.PI / 2 + (i / trailCount) * Math.PI * 2;
+        // spread the near ends across the lower arc around the view axis
+        const t = trailCount > 1 ? i / (trailCount - 1) : 0;
+        const angle = o.angleStart + t * (o.angleEnd - o.angleStart);
         near[i * 3] = Math.cos(angle) * o.nearRadius;
         near[i * 3 + 1] = Math.sin(angle) * o.nearRadius;
         near[i * 3 + 2] = o.nearZ;
 
         phase[i] = Math.random() * Math.PI * 2;
-        spectral[i] = trailCount > 1 ? i / (trailCount - 1) : 0;
+        spectral[i] = t;
     }
 
     return {
