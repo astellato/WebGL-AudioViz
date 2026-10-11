@@ -85,6 +85,23 @@ describe('canyon tangent and lateral frames', () => {
   });
 });
 
+describe('scratch reuse', () => {
+  it('does not clobber a caller output when later calls reuse the scratch', () => {
+    const field = createTrailField({ trailCount: 4 });
+    const a = { x: 0, y: 0, z: 0 };
+    const b = { x: 0, y: 0, z: 0 };
+    canyonPoint(field, 1, 0.3, a);
+    const ax = a.x;
+    const ay = a.y;
+    const az = a.z;
+    canyonLateral(field, 1, 0.3, b);
+    canyonTangent(field, 1, 0.3, b);
+    expect(a.x).toBe(ax);
+    expect(a.y).toBe(ay);
+    expect(a.z).toBe(az);
+  });
+});
+
 describe('rippleAmount', () => {
   it('is zero with no ripple and bounded by the ripple value', () => {
     const field = createTrailField({ trailCount: 4 });

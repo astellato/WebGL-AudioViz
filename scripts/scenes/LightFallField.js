@@ -78,8 +78,16 @@ function createTrailField(options = {}) {
     };
 }
 
-// The three control points of a trail's cubic Bézier, from its near end (P0)
-// to the shared apex (P3). Shared by canyonPoint and the frame functions.
+// Reusable control points, so the hot path (per-photon, per-frame) allocates
+// nothing. Safe because JS is single-threaded and these never escape a call.
+const _cp0 = { x: 0, y: 0, z: 0 };
+const _cp1 = { x: 0, y: 0, z: 0 };
+const _cp2 = { x: 0, y: 0, z: 0 };
+const _latPoint = { x: 0, y: 0, z: 0 };
+const _latTangent = { x: 0, y: 0, z: 0 };
+
+// Write the three control points of a trail's cubic Bézier (from its near end
+// P0 toward the shared apex P3) into the caller's objects.
 function controlPoints(field, track, p0, p1, p2) {
     p0.x = field.near[track * 3];
     p0.y = field.near[track * 3 + 1];
@@ -92,8 +100,6 @@ function controlPoints(field, track, p0, p1, p2) {
     p2.x = field.apex.x;
     p2.y = field.apex.y - field.apexDrop;
     p2.z = field.apex.z + field.apexBack;
-
-    return { p0, p1, p2, p3: field.apex };
 }
 
 /**
@@ -106,7 +112,11 @@ function controlPoints(field, track, p0, p1, p2) {
  * @returns {{x:number,y:number,z:number}} `out`
  */
 function canyonPoint(field, track, s, out) {
-    const { p0, p1, p2, p3 } = controlPoints(field, track, {}, {}, {});
+    controlPoints(field, track, _cp0, _cp1, _cp2);
+    const p0 = _cp0;
+    const p1 = _cp1;
+    const p2 = _cp2;
+    const p3 = field.apex;
 
     const u = 1 - s;
     const a = u * u * u;
@@ -131,7 +141,11 @@ export {
  * @returns {{x:number,y:number,z:number}} `out`
  */
 function canyonTangent(field, track, s, out) {
-    const { p0, p1, p2, p3 } = controlPoints(field, track, {}, {}, {});
+    controlPoints(field, track, _cp0, _cp1, _cp2);
+    const p0 = _cp0;
+    const p1 = _cp1;
+    const p2 = _cp2;
+    const p3 = field.apex;
     const u = 1 - s;
 
     const a = 3 * u * u;
@@ -159,8 +173,8 @@ function canyonTangent(field, track, s, out) {
  * @returns {{x:number,y:number,z:number}} `out`
  */
 function canyonLateral(field, track, s, out) {
-    const point = canyonPoint(field, track, s, {});
-    const tangent = canyonTangent(field, track, s, {});
+    const point = canyonPoint(field, track, s, _latPoint);
+    const tangent = canyonTangent(field, track, s, _latTangent);
 
     // view direction from the point to the camera at the origin
     const viewLength = Math.hypot(point.x, point.y, point.z) || 1;
