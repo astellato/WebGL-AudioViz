@@ -12,12 +12,12 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 
-import { isMobile, hasWebGL2 } from '../Utils.js';
+import { isMobile, hasWebGL2, hasTabAudioCapture } from '../Utils.js';
 import { AudioHandler, AUDIOINPUTS } from '../audio/AudioHandler.js';
 import { SCENE_DEFINITIONS } from '../scenes/index.js';
 import { ControlState } from './ControlState.js';
 import { SceneManager } from './SceneManager.js';
-import { loadControlState, saveControlState } from './Persistence.js';
+import { loadControlState, saveControlState, saveAudioSource } from './Persistence.js';
 import { NameFlash } from './NameFlash.js';
 import { KeyboardController } from './KeyboardController.js';
 import { GestureController } from './GestureController.js';
@@ -54,6 +54,7 @@ class App {
         this.clock = new THREE.Clock(true);
         this.deltaTime = 0;
         this.initialized = false;
+        this._beginPending = false;
 
         this.animate = this.animate.bind(this);
         this.onWindowResize = this.onWindowResize.bind(this);
@@ -62,26 +63,59 @@ class App {
     }
 
     startLive() {
-        this.audioType = AUDIOINPUTS.MIC;
-        this.init();
+        return this.begin(AUDIOINPUTS.MIC);
     }
 
     startDefault() {
-        this.audioType = AUDIOINPUTS.DEFAULT;
-        this.init();
+        return this.begin(AUDIOINPUTS.DEFAULT);
     }
 
-    init() {
-        if (this.initialized) return;
-        this.initialized = true;
+    startTab() {
+        return this.begin(AUDIOINPUTS.TAB);
+    }
 
-        // three r186's WebGLRenderer needs WebGL2; without it, constructing the
-        // renderer throws and (overlay already gone) leaves a black screen.
-        if (!hasWebGL2()) {
-            this.showWebGL2Error();
-            return;
+    /**
+     * The single entry point for entering the app. Builds the audio graph and
+     * unlocks the AudioContext synchronously (still inside the calling user
+     * gesture), then awaits the source before building the rest. Returns false -
+     * leaving the overlay/hint in place - when the source can't start, so the
+     * user can retry.
+     *
+     * @param {number} input one of AUDIOINPUTS.DEFAULT / MIC / TAB
+     * @returns {Promise<boolean>}
+     */
+    async begin(input) {
+        if (this.initialized || this._beginPending) return false;
+        this._beginPending = true;
+        try {
+            // three r186's WebGLRenderer needs WebGL2; without it, constructing
+            // the renderer throws and (overlay already gone) leaves a black screen.
+            if (!hasWebGL2()) {
+                this.showWebGL2Error();
+                return false;
+            }
+
+            if (!this.audioHandler) {
+                this.audioHandler = new AudioHandler({ debug: this.debug, levelsCount: AUDIO_LEVELS, fftSize: FFT_SIZE });
+                // called synchronously within the gesture, before the await, so the
+                // browser's autoplay policy lets the context run
+                this.audioHandler.resumeAudioContext();
+            }
+
+            const result = await this.audioHandler.setSource(input);
+            if (!result.ok) return false;
+
+            this.audioType = input;
+            saveAudioSource(localStorage, input);
+            this.finishInit();
+            this.initialized = true;
+            return true;
+        } finally {
+            this._beginPending = false;
         }
+    }
 
+    finishInit() {
         const overlay = document.getElementById('overlay');
         if (overlay) overlay.remove();
 
@@ -98,11 +132,6 @@ class App {
         this.stats = new Stats();
         this.container.appendChild(this.stats.dom);
         this.hideStats();
-
-        this.audioHandler = new AudioHandler(this.audioType, this.debug, AUDIO_LEVELS, FFT_SIZE);
-        // init() runs synchronously inside the button click, so this unlocks audio
-        // under the browser autoplay policy
-        this.audioHandler.resumeAudioContext();
 
         const sceneDefs = SCENE_DEFINITIONS.map((d) => ({
             id: d.id,
@@ -125,6 +154,11 @@ class App {
         this.applyState(this.state);
 
         this.nameFlash = new NameFlash(document.getElementById('name-flash'), NAME_FLASH_MS);
+        // The browser's own "Stop sharing" ends the tab source; tell the user.
+        this.audioHandler.onSourceEnded = () => {
+            if (this.gui) this.gui.sync(this.state);
+            this.nameFlash.show('Tab sharing ended \u2014 choose a source');
+        };
         this.actions = {
             'scene-next': () => this.changeScene(1),
             'scene-prev': () => this.changeScene(-1),
@@ -137,6 +171,7 @@ class App {
             setDriftEnabled: (b) => this.applyDriftEnabled(b),
             setDriftSpeed: (s) => { this.state.setDriftSpeed(Number(s)); if (this.drift) this.drift.setSpeed(Number(s)); },
             setDriftScope: (s) => this.state.setDriftScope(s),
+            setAudioSource: (input) => this.setAudioSource(input),
             toggleStats: () => this.toggleStats(),
             toggleAudioDebug: () => this.toggleAudioDebug(),
             toggleGui: () => this.toggleGui(),
@@ -162,6 +197,7 @@ class App {
             actions: this.actions,
             lineup: SCENE_DEFINITIONS,
             getDebugState: () => ({ stats: this.statsVisible, audioOverlay: this.showOverlay }),
+            getAudioState: () => this.getAudioState(),
         });
 
         this.drift = new DriftController(this.state.drift.speedSeconds);
@@ -334,7 +370,24 @@ class App {
     }
 
     isPlaying() {
-        return this.audioHandler.audio.isPlaying || this.audioHandler.currentInput === AUDIOINPUTS.MIC;
+        return this.audioHandler ? this.audioHandler.isPlaying() : false;
+    }
+
+    /** Switch the live source from the GUI, then persist and re-sync. */
+    async setAudioSource(input) {
+        if (!this.audioHandler) return;
+        const result = await this.audioHandler.setSource(input);
+        if (result.ok) {
+            saveAudioSource(localStorage, input);
+        }
+        if (this.gui) this.gui.sync(this.state);
+    }
+
+    getAudioState() {
+        return {
+            source: this.audioHandler ? this.audioHandler.getSource() : AUDIOINPUTS.NONE,
+            tabSupported: hasTabAudioCapture(),
+        };
     }
 
     pauseResumeMusic() {
