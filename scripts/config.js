@@ -10,6 +10,10 @@ import { Vector3 } from 'three';
 export const FFT_SIZE = 512;
 export const AUDIO_LEVELS = 6;
 
+// Crossfade when switching audio source (seconds). Long enough to hear the
+// default track fade out, short enough not to feel sluggish.
+export const AUDIO_FADE_SECONDS = 0.4;
+
 export const SPHERE_RADIUS = 0.25;
 export const SPHERE_RESOLUTION = 128;
 
@@ -54,6 +58,9 @@ export const BEAT_PULSE = 0.15;
 
 // Control state / drift
 export const STORAGE_KEY = 'audioviz.control.v1';
+// The chosen audio source lives under its own key: the bootstrap reads it before
+// the app exists, to decide between the start overlay and a straight-in reload.
+export const AUDIO_STORAGE_KEY = 'audioviz.audio.v1';
 export const DRIFT_DEFAULT_SPEED_SECONDS = 60;
 export const DRIFT_SPEED_OPTIONS = [30, 60, 120];
 export const DRIFT_SCOPES = ['visualizers', 'variants', 'both'];
