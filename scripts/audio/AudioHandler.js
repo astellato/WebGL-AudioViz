@@ -175,10 +175,30 @@ class AudioHandler {
         }).then((stream) => ({ kind: 'stream', stream }));
     }
 
-    // Tab capture is implemented in the tab-capture task; until then it is not
-    // available and setSource reports it like any other acquisition failure.
     _acquireTab(){
-        return Promise.reject(new Error('Tab audio capture is not available.'));
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+            return Promise.reject(new Error('Tab audio capture is not supported in this browser.'));
+        }
+        const request = (constraints) => navigator.mediaDevices.getDisplayMedia(constraints);
+        // Prefer audio-only. Fall back to requesting a video surface only when the
+        // browser rejects the constraints themselves; a user cancel
+        // (NotAllowedError) must not re-open the picker.
+        return request({ audio: true, video: false })
+            .catch((error) => {
+                if(error && error.name === 'TypeError') return request({ audio: true, video: true });
+                throw error;
+            })
+            .then((stream) => {
+                for(const video of (stream.getVideoTracks ? stream.getVideoTracks() : [])){
+                    try { video.stop(); } catch { /* already gone */ }
+                }
+                const audioTracks = stream.getAudioTracks ? stream.getAudioTracks() : [];
+                if(audioTracks.length === 0){
+                    this._stopStream(stream);
+                    throw new Error('No audio was shared. Tick "Share tab audio" in the picker.');
+                }
+                return { kind: 'stream', stream, audioTrack: audioTracks[0] };
+            });
     }
 
     _connect(input, acquired){
@@ -222,7 +242,26 @@ class AudioHandler {
         const sourceNode = this.context.createMediaStreamSource(acquired.stream);
         sourceNode.connect(gainNode);
         gainNode.connect(this.bus);
+
+        if(input === AUDIOINPUTS.TAB && acquired.audioTrack){
+            // The browser's own "Stop sharing" ends the track; react to that.
+            acquired.audioTrack.onended = () => this._handleExternalEnd(input);
+        }
+
         return { source: input, gainParam: gainNode.gain, gainNode, sourceNode, stream: acquired.stream };
+    }
+
+    // The user ended sharing from the browser's UI (not by switching source).
+    // Our own teardown nulls onended first, so this only fires for a real end.
+    _handleExternalEnd(input){
+        if(this._currentSource !== input || !this._active || this._active.source !== input) return;
+        const feed = this._active;
+        this._active = null;
+        this._currentSource = AUDIOINPUTS.NONE;
+        this._stopStream(feed.stream);
+        if(feed.sourceNode && feed.sourceNode.disconnect) feed.sourceNode.disconnect();
+        if(feed.gainNode && feed.gainNode.disconnect) feed.gainNode.disconnect();
+        if(typeof this.onSourceEnded === 'function') this.onSourceEnded();
     }
 
     _teardown(feed){

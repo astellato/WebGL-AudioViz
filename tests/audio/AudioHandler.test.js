@@ -105,3 +105,52 @@ it('loads the default track lazily when selected after starting elsewhere', asyn
 
   vi.advanceTimersByTime(AUDIO_FADE_SECONDS * 1000);
 });
+
+it('treats a display stream with no audio track as a failure', async () => {
+  const h = new AudioHandler();
+  await h.setSource(AUDIOINPUTS.DEFAULT);
+  const video = { stop: vi.fn() };
+  const stream = { getAudioTracks: () => [], getVideoTracks: () => [video], getTracks: () => [video] };
+  navigator.mediaDevices.getDisplayMedia = vi.fn().mockResolvedValue(stream);
+
+  const res = await h.setSource(AUDIOINPUTS.TAB);
+  expect(navigator.mediaDevices.getDisplayMedia).toHaveBeenCalled();
+  expect(video.stop).toHaveBeenCalled();
+  expect(res.ok).toBe(false);
+  expect(h.getSource()).toBe(AUDIOINPUTS.DEFAULT);
+});
+
+it('stops every track and clears the source when the user ends sharing', async () => {
+  const h = new AudioHandler();
+  const track = { stop: vi.fn(), onended: null };
+  const stream = { getAudioTracks: () => [track], getVideoTracks: () => [], getTracks: () => [track] };
+  navigator.mediaDevices.getDisplayMedia = vi.fn().mockResolvedValue(stream);
+
+  await h.setSource(AUDIOINPUTS.TAB);
+  expect(h.getSource()).toBe(AUDIOINPUTS.TAB);
+
+  const ended = vi.fn();
+  h.onSourceEnded = ended;
+  track.onended(); // simulate the browser's own "Stop sharing"
+
+  expect(h.getSource()).toBe(AUDIOINPUTS.NONE);
+  expect(ended).toHaveBeenCalledTimes(1);
+});
+
+it('does not fire onSourceEnded when we stop sharing ourselves', async () => {
+  vi.useFakeTimers();
+  const h = new AudioHandler();
+  const track = { stop: vi.fn(), onended: null };
+  const stream = { getAudioTracks: () => [track], getVideoTracks: () => [], getTracks: () => [track] };
+  navigator.mediaDevices.getDisplayMedia = vi.fn().mockResolvedValue(stream);
+  await h.setSource(AUDIOINPUTS.TAB);
+  expect(h.getSource()).toBe(AUDIOINPUTS.TAB);
+
+  const ended = vi.fn();
+  h.onSourceEnded = ended;
+  await h.setSource(AUDIOINPUTS.DEFAULT);
+  vi.advanceTimersByTime(AUDIO_FADE_SECONDS * 1000);
+
+  expect(ended).not.toHaveBeenCalled();
+  expect(track.onended).toBeNull();
+});
