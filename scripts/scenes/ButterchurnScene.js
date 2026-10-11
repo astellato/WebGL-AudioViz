@@ -114,6 +114,12 @@ class ButterchurnScene {
         canvas.style.height = '100vh';
         canvas.style.display = 'block';
         canvas.style.zIndex = '1';
+        // Butterchurn never resizes the canvas it is handed; it only sets the
+        // WebGL viewport. Size the drawing buffer to the physical display here
+        // (before the context is created) or it stays at the 300x150 default.
+        const { width, height } = this._size();
+        canvas.width = width;
+        canvas.height = height;
         const container = document.getElementById('container') || document.body;
         container.appendChild(canvas);
         this.canvas = canvas;
@@ -137,7 +143,10 @@ class ButterchurnScene {
             .then((mod) => {
                 const butterchurn = resolveButterchurn(mod);
                 const { width, height } = this._size();
-                this.visualizer = butterchurn.createVisualizer(this.context.audioContext, this.canvas, { width, height });
+                // width/height are the drawing-buffer size in device pixels;
+                // butterchurn's own pixelRatio would multiply them again, so
+                // pin it to 1 to render 1:1 with the display.
+                this.visualizer = butterchurn.createVisualizer(this.context.audioContext, this.canvas, { width, height, pixelRatio: 1 });
                 if (this.context.audioNode) this.visualizer.connectAudio(this.context.audioNode);
                 this._loadPreset();
             })
@@ -153,7 +162,13 @@ class ButterchurnScene {
     _applySize() {
         if (!this.visualizer) return;
         const { width, height } = this._size();
-        this.visualizer.setRendererSize(width, height);
+        // resizing the canvas resets the WebGL backbuffer; butterchurn re-creates
+        // its textures and re-renders to the new viewport via setRendererSize
+        if (this.canvas) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+        }
+        this.visualizer.setRendererSize(width, height, { pixelRatio: 1 });
     }
 
     _loadPreset() {
