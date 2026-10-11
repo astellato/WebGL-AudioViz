@@ -31,6 +31,11 @@ function showAudioError(message){
     banner.style.display = 'block';
 }
 
+function hideAudioError(){
+    const banner = document.getElementById('audio-error');
+    if(banner) banner.style.display = 'none';
+}
+
 class AudioHandler {
 
     constructor({ debug = false, levelsCount = 6, fftSize = 512 } = {}) {
@@ -135,6 +140,7 @@ class AudioHandler {
 
         this._connect(input, acquired);
         this._currentSource = input;
+        hideAudioError();
         return { ok:true, source: input };
     }
 

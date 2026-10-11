@@ -42,12 +42,19 @@ function hasMicrophone(){
     }
 }
 
-// Tab audio is desktop-only: phones have no tabs to share and the picker API is
-// absent or useless there.
+// Only Chromium engines actually capture audio with getDisplayMedia; Firefox and
+// Safari expose the API but ignore audio, so offering it there only fails.
+function isChromium(){
+    return /Chrome|Chromium|Edg\//i.test(navigator.userAgent || '');
+}
+
+// Tab audio is desktop Chromium only: phones have no tabs to share, and
+// non-Chromium engines return a stream with no audio track.
 function hasTabAudioCapture(){
     try {
         return typeof navigator !== 'undefined'
             && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
+            && isChromium()
             && !isMobile();
     } catch {
         return false;

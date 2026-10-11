@@ -21,6 +21,7 @@ function makeStream(track = { stop: vi.fn(), onended: null }) {
 
 beforeEach(() => {
   contexts.length = 0;
+  document.getElementById('audio-error')?.remove();
   vi.stubGlobal('navigator', {
     userAgent: 'Mozilla/5.0 (X11; Linux)',
     mediaDevices: {
@@ -132,6 +133,20 @@ it('requests a video track for tab capture (Chrome requires one) and drops it', 
   expect(navigator.mediaDevices.getDisplayMedia).toHaveBeenCalledTimes(1);
   expect(navigator.mediaDevices.getDisplayMedia.mock.calls[0][0].video).toBe(true);
   expect(video.stop).toHaveBeenCalled();
+});
+
+it('clears the error banner after a successful switch', async () => {
+  const h = new AudioHandler();
+  navigator.mediaDevices.getUserMedia.mockRejectedValue(new Error('denied'));
+  await h.setSource(AUDIOINPUTS.MIC);
+
+  const banner = document.getElementById('audio-error');
+  expect(banner).toBeTruthy();
+  expect(banner.style.display).toBe('block');
+
+  const res = await h.setSource(AUDIOINPUTS.DEFAULT);
+  expect(res.ok).toBe(true);
+  expect(banner.style.display).toBe('none');
 });
 
 it('stops every track and clears the source when the user ends sharing', async () => {
