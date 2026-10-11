@@ -1,7 +1,8 @@
 /*
     AudioAnalyzer.js - class for analyzing audio data
 
-	Takes in wave and FFT data, smooths out the values in a sliding average.
+	Takes a source AudioNode (the AudioHandler bus) and creates its own
+	AnalyserNode on it. Takes in wave and FFT data, smooths out the values in a sliding average.
 	Calculates peaks of sounds, returns normalized relative values between no sound and peak sound.
 	Very robust at handling different audio sources and gain.
 	Not the most perfect analysis but is performant and works well enough ¯\_(ツ)_/¯.
@@ -18,10 +19,10 @@ import {
 
 class AudioAnalyzer {
 
-	constructor( _audio,  _debug = false, _levelsCount = 6, _fftSize = 512 ) {
+	constructor( _sourceNode,  _debug = false, _levelsCount = 6, _fftSize = 512 ) {
 
-        this.audio = _audio;
-		this.analyser = this.audio.context.createAnalyser(); 
+        this.sourceNode = _sourceNode;
+		this.analyser = this.sourceNode.context.createAnalyser(); 
 		this.analyser.fftSize = _fftSize;
         this.analyser.smoothingTimeConstant = 0.3;
 
@@ -74,7 +75,7 @@ class AudioAnalyzer {
 
     init(){
         //console.log("analyzer init");
-        this.audio.getOutput().connect( this.analyser );
+        this.sourceNode.connect( this.analyser );
 
 		// initialize peaks data
 		for(let j = 0; j < this.levelsCount; j++){

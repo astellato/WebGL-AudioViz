@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { AudioAnalyzer } from '../../scripts/audio/AudioAnalyzer.js';
 
-function fakeAudio(spectrum) {
+function fakeNode(spectrum) {
   const analyser = {
     fftSize: 512,
     smoothingTimeConstant: 0.3,
@@ -9,13 +9,13 @@ function fakeAudio(spectrum) {
     getByteFrequencyData(arr) { arr.set(spectrum.slice(0, arr.length)); },
     getByteTimeDomainData(arr) { arr.fill(128); },
   };
-  return { context: { createAnalyser: () => analyser }, getOutput: () => ({ connect() {} }), _spectrum: spectrum };
+  return { context: { createAnalyser: () => analyser }, connect() {}, _spectrum: spectrum };
 }
 
 it('exposes a normalized spectrum and a beat packet', () => {
   const spectrum = new Uint8Array(256);
-  const audio = fakeAudio(spectrum);
-  const a = new AudioAnalyzer(audio, false, 6, 512);
+  const node = fakeNode(spectrum);
+  const a = new AudioAnalyzer(node, false, 6, 512);
   a.update(1 / 60);
   expect(a.getSpectrum()).toBeInstanceOf(Float32Array);
   expect(a.getSpectrum()[12]).toBe(0);
