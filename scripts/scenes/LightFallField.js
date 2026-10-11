@@ -26,6 +26,8 @@ const DEFAULTS = {
     // fanning up from below the viewer rather than a symmetric starburst
     angleStart: -Math.PI * 1.1,
     angleEnd: Math.PI * 0.1,
+    // lifts the whole canyon in world Y; equivalent to lowering the camera
+    yOffset: 0,
 };
 
 /**
@@ -54,7 +56,7 @@ function createTrailField(options = {}) {
         const t = trailCount > 1 ? i / (trailCount - 1) : 0;
         const angle = o.angleStart + t * (o.angleEnd - o.angleStart);
         near[i * 3] = Math.cos(angle) * o.nearRadius;
-        near[i * 3 + 1] = Math.sin(angle) * o.nearRadius;
+        near[i * 3 + 1] = Math.sin(angle) * o.nearRadius + o.yOffset;
         near[i * 3 + 2] = o.nearZ;
 
         phase[i] = Math.random() * Math.PI * 2;
@@ -65,7 +67,7 @@ function createTrailField(options = {}) {
         trailCount,
         segments: o.segments,
         near,
-        apex: { x: 0, y: o.apexY, z: o.apexZ },
+        apex: { x: 0, y: o.apexY + o.yOffset, z: o.apexZ },
         phase,
         spectral,
         rippleFreq: o.rippleFreq,

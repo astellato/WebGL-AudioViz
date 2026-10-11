@@ -21,6 +21,18 @@ describe('createTrailField', () => {
       expect(q).toBeLessThanOrEqual(1);
     }
   });
+
+  it('lifts every trail (and the apex) by yOffset', () => {
+    const base = createTrailField({ trailCount: 4 });
+    const lifted = createTrailField({ trailCount: 4, yOffset: 2.5 });
+    const a = { x: 0, y: 0, z: 0 };
+    const b = { x: 0, y: 0, z: 0 };
+    canyonPoint(base, 2, 0.5, a);
+    canyonPoint(lifted, 2, 0.5, b);
+    expect(b.y).toBeCloseTo(a.y + 2.5, 5);
+    expect(lifted.apex.y).toBeCloseTo(base.apex.y + 2.5, 5);
+    expect(lifted.near[2 * 3 + 1]).toBeCloseTo(base.near[2 * 3 + 1] + 2.5, 5);
+  });
 });
 
 describe('canyonPoint', () => {

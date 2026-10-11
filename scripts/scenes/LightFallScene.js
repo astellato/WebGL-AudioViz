@@ -33,6 +33,8 @@ const CURVE = {
     apexDrop: 10.0,
     apexBack: 10.0,
     rippleFreq: 6.0,
+    // lowers the camera relative to the canyon (lifts the canyon by this much)
+    yOffset: 4.5,
 };
 
 const TRAIL_WIDTH = 0.012;
@@ -40,7 +42,7 @@ const TRAIL_GAIN_BASE = 0.85;
 
 const PHOTON_WIDTH = 0.06;
 const PHOTON_LENGTH = 0.95;
-const PHOTON_SPEED = 0.16;
+const PHOTON_SPEED = 0.32;
 const BEAT_SPREAD = 0.13;
 
 // The trails only bend when level + beat strength gets past this — deliberately
