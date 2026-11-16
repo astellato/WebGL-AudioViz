@@ -3,9 +3,10 @@
 
     The visualizer itself lives in scripts/app/App.js; this module creates the
     app and decides how the user enters it. On a first visit (nothing
-    remembered) it wires the start overlay; on later loads it skips the overlay,
-    restores the remembered source, and waits for one user gesture - required
-    before an AudioContext will run - behind a click/tap hint.
+    remembered) it wires the start overlay. On later loads it skips the overlay
+    and hands the reload start gate (scripts/app/StartGate.js) the remembered
+    source, so the user can pick any supported source - one press, no window
+    listeners.
 
     Copyright © 2021 Anthony Stellato
 */
@@ -14,6 +15,7 @@ import { App } from './app/App.js';
 import { AUDIOINPUTS } from './audio/AudioHandler.js';
 import { resolveAudioSource } from './audio/audioSources.js';
 import { loadAudioSource } from './app/Persistence.js';
+import { StartGate } from './app/StartGate.js';
 import { hasMicrophone, hasTabAudioCapture, hasWebGL2 } from './Utils.js';
 
 const app = new App();
@@ -37,30 +39,13 @@ if (remembered === null || !hasWebGL2()) {
     wireStart();
 } else {
     overlay.remove();
-    hint.textContent = remembered === AUDIOINPUTS.TAB
-        ? 'Click or tap to share a tab'
-        : 'Click or tap to start audio';
-    hint.style.display = 'block';
-
-    const start = async () => {
-        // Enter the app on the first interaction; once it exists, a click retries
-        // the remembered source instead of re-entering.
-        const ok = app.initialized
-            ? await app.setAudioSource(remembered)
-            : await app.begin(remembered);
-        if (ok) {
-            hint.style.display = 'none';
-            window.removeEventListener('pointerdown', start);
-            window.removeEventListener('click', start);
-            window.removeEventListener('keydown', start);
-            window.removeEventListener('touchstart', start);
-        }
-        // On failure the hint and its listeners stay so the user can click again.
-    };
-    window.addEventListener('pointerdown', start);
-    window.addEventListener('click', start);
-    window.addEventListener('keydown', start);
-    window.addEventListener('touchstart', start);
+    new StartGate({
+        app,
+        root: hint,
+        storage: localStorage,
+        canMic: hasMicrophone(),
+        canTab,
+    }).mount();
 }
 
 export { App };
