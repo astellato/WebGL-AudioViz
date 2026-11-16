@@ -65,6 +65,14 @@ export const BEAT_STATS_SECONDS = 1.5;         // adaptive threshold memory
 export const BEAT_RISE_CAP_DB = 18;            // most one sub band may contribute
 export const BEAT_MIN_FLUX_DB = 2;             // dB of rise always required, so steady sound never fires
 
+// Beat debug pane: the top of its scrolling flux plot, in dB. The detector's
+// flux is a mean of per sub band dB rises (the weights sum to 1) with each rise
+// capped at BEAT_RISE_CAP_DB, so 18 dB is its hard maximum: a full broadband
+// onset measures exactly that, a kick about 15, and a kick over a bass line
+// about 14. The pane tops out at 16 so ordinary onsets stay near full height
+// while the loudest frames clamp instead of drawing past the pane.
+export const BEAT_FLUX_DISPLAY_MAX = 16;
+
 // Tempo estimation: the flux envelope is resampled to TEMPO_RATE Hz over a
 // TEMPO_SECONDS window and autocorrelated with a comb over the BPM range.
 export const TEMPO_RATE = 100;
