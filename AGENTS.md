@@ -20,6 +20,7 @@ npm run build      # production build into dist/
 npm run preview    # serve the production build, HTTPS, all interfaces
 npm test           # Vitest, one-shot (what CI and reviewers run)
 npm run test:watch # Vitest in watch mode
+npm run audio:test # offline audio analysis harness (see Audio pipeline below)
 ```
 
 Notes:
@@ -99,12 +100,22 @@ renderer, so looks cannot leak between scenes. Subclasses override hooks:
 `onUpdate(audio, beats, deltaTime)`, `applyVariant`, `onResize`, `onDispose`.
 
 **Audio pipeline.** `AudioHandler` wraps a `THREE.AudioListener` / `THREE.Audio`
-(default looping track, or mic) and exposes `getOutput()`. `AudioAnalyzer`
-creates its **own** `AnalyserNode` on that output and produces the normalized
-spectrum (`getSpectrum()`, 0..1), per-band levels (`getAverage(idx)`), a global
-relative level (`getRelativeTotal()`), and a beat packet (`getBeat()` →
-`{ onBeat, strength, location, band }`, computed by `BeatDetector` from
-spectral flux). These reach scenes as the `audio` and `beats` arguments.
+(default looping track, mic, or shared tab) and exposes `getOutput()`, the bus
+everything downstream attaches to. `AudioAnalyzer` creates its **own**
+`AnalyserNode` on that bus and produces the normalized spectrum
+(`getSpectrum()`, 0..1), per-band levels (`getAverage(idx)`), a global relative
+level (`getRelativeTotal()`), a beat packet (`getBeat()` →
+`{ onBeat, strength, location, band }`) and a tempo estimate (`getBpm()`). The
+spectrum is read as float dB, not bytes. These reach scenes as the `audio` and
+`beats` arguments.
+
+`BeatDetector` measures flux in dB per log spaced sub band against a fixed time
+ago, which is what makes a track 30 dB down detect the same beats; it then
+estimates tempo by autocorrelating the flux envelope with a comb score. Keep
+`FFT_SIZE` at 2048: at 512 the bins are ~94 Hz wide and the detector loses the
+kick drum. `npm run audio:test` replays audio through the real analyzer offline
+and checks synthetic tracks against known beat times — run it when touching
+the analyzer or the detector.
 
 **Butterchurn is separate.** `ButterchurnScene` is *not* a `ThreeVisualizer`: it
 runs its own WebGL2 engine on its own canvas, lazily imported. It is handed the

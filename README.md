@@ -20,6 +20,34 @@ Live version available [here](https://astellato.github.io/WebGL-AudioViz/).
 
 If on PC, press SHIFT for audio analysis debug display.
 
+## Audio analysis
+
+`scripts/audio/AudioAnalyzer.js` reads the FFT as float dB (bytes clip at -30 dB
+and quantize to 8 bits, which flattens the loud low end) and derives log spaced
+band levels, each normalized against its own decaying peak so any source and
+gain works.
+
+`scripts/audio/BeatDetector.js` measures spectral flux in dB per sub band
+against a fixed time ago, so a track 30 dB down detects the same beats, and
+estimates the tempo (BPM) by autocorrelating the flux envelope with a comb
+score. Every time constant is in seconds, so results do not depend on frame
+rate.
+
+`FFT_SIZE` is 2048: at 512 the bins are ~94 Hz wide and the lowest bands and the
+beat detector lose the kick drum entirely.
+
+An offline harness replays audio through the real analyzer in Node, with a
+simulated `AnalyserNode` and a jittered frame clock, and checks the synthetic
+tracks against known beat times:
+
+```sh
+npm run audio:test                          # synthetic tracks + the default track
+npm run audio:test -- --track song.mp3      # report on another file (needs ffmpeg)
+npm run audio:test -- --no-track            # synthetic tracks only
+```
+
+It exits non-zero when a synthetic check fails, so it can gate a change.
+
 ## Controls
 
 | Input | Action |
