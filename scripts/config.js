@@ -7,7 +7,10 @@
 
 import { Vector3 } from 'three';
 
-export const FFT_SIZE = 512;
+// FFT 2048 gives ~23 Hz bins at 48 kHz. The log spaced bands and the beat
+// detector both work below ~100 Hz, which 512 (94 Hz bins) cannot resolve: at
+// 512 the lowest bands collapse onto one bin and beat recall drops sharply.
+export const FFT_SIZE = 2048;
 export const AUDIO_LEVELS = 6;
 
 // Crossfade when switching audio source (seconds). Long enough to hear the
@@ -52,6 +55,24 @@ export const BEAT_WINDOW_SECONDS = 1.0;
 export const BEAT_MARGIN = 1.6;
 export const BEAT_FLUX_FLOOR = 0.02;
 export const BEAT_REFRACTORY_SECONDS = 0.12;
+
+// Onset detail. The flux is measured in dB per log spaced sub band, so a rise is
+// the same number of dB however loud the input is (a track 30 dB down detects the
+// same beats).
+export const BEAT_MIN_INTERVAL_SECONDS = 0.15;  // 400 beats per minute ceiling
+export const BEAT_FLUX_LAG_SECONDS = 0.07;     // how far back the rise is measured from
+export const BEAT_STATS_SECONDS = 1.5;         // adaptive threshold memory
+export const BEAT_RISE_CAP_DB = 18;            // most one sub band may contribute
+export const BEAT_MIN_FLUX_DB = 2;             // dB of rise always required, so steady sound never fires
+
+// Tempo estimation: the flux envelope is resampled to TEMPO_RATE Hz over a
+// TEMPO_SECONDS window and autocorrelated with a comb over the BPM range.
+export const TEMPO_RATE = 100;
+export const TEMPO_SECONDS = 8;
+export const TEMPO_MIN_BPM = 60;
+export const TEMPO_MAX_BPM = 200;
+export const TEMPO_COMB_TEETH = 4;
+export const TEMPO_INTERVAL_SECONDS = 1;
 
 // Extra blob displacement added on a beat (Phase 1 pill)
 export const BEAT_PULSE = 0.15;
