@@ -245,6 +245,67 @@ a, button, input, select {
 	pointer-events: none; /* never block the gesture it asks for */
 }
 
+	/* The hint root stays pointer-events:none so it never blocks a gesture aimed
+	   past it, but the gate's own buttons must be clickable. The global rule
+	   "a, button, input, select { pointer-events: auto }" would already do it;
+	   it is restated on the gate's buttons so the retirement rule below can
+	   override both without touching the hint root's behaviour. */
+	#audio-hint .gate-status{
+		margin-bottom: 8px;
+		text-align: center;
+	}
+
+	#audio-hint .gate-sources{
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 8px;
+		max-width: 60vw;
+	}
+
+	#audio-hint .gate-sources button{
+		pointer-events: auto;
+		background: transparent;
+		border: 2px solid rgba(255, 255, 255, 0.6);
+		border-radius: 4px;
+		color: #ffffff;
+		padding: 8px 14px;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+
+	#audio-hint .gate-sources button[data-primary="true"]{
+		border-color: #ffffff;
+		background: rgba(255, 255, 255, 0.14);
+	}
+
+	#audio-hint .gate-sources button[data-retry="true"]{
+		border-color: #ffffff;
+	}
+
+	#audio-hint[aria-busy="true"] .gate-sources button{
+		opacity: 0.6;
+	}
+
+	/* After success the gate retires at once, but a button that holds focus is
+	   kept attached until the press that started audio is released. Nothing in
+	   the retired subtree may be hit or seen. The third selector outranks
+	   ".gate-sources button" above so the buttons really do stop receiving
+	   pointer events; the root alone would lose to it. No transition: a
+	   fade-out would leave a stale control briefly faint rather than gone. */
+	#audio-hint[data-retiring="true"]{
+		opacity: 0;
+		transition: none;
+	}
+
+	#audio-hint[data-retiring="true"],
+	#audio-hint[data-retiring="true"] *,
+	#audio-hint[data-retiring="true"] .gate-sources button{
+		pointer-events: none;
+	}
+
 /* GUI TOGGLE (touch devices only; desktop uses the H key) */
 #gui-toggle{
 	display: none;

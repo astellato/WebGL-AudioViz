@@ -40,9 +40,10 @@ Notes:
 index.html            page shell: start overlay, debug canvases, mount points
 main.css              all styling
 scripts/
-  AudioSphere.js      bootstrap: creates App, wires the start-overlay buttons
+  AudioSphere.js      bootstrap: creates App, wires the overlay or the reload gate
   app/                the application, framework-free
     App.js            owns the shared renderer, audio, scenes, controls
+    StartGate.js      reload start gate: source buttons, one attempt, input isolation
     SceneManager.js   lazy scene lifecycle + per-frame dispatch
     ControlState.js   single source of truth for scene/variant/drift/debug
     Persistence.js    load/save control state to localStorage
