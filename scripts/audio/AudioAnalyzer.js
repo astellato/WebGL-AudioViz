@@ -23,6 +23,7 @@ import { SpectrumBands } from './SpectrumBands.js';
 import { BeatDetector } from './BeatDetector.js';
 import {
     BEAT_WINDOW_SECONDS, BEAT_MARGIN, BEAT_FLUX_FLOOR, BEAT_REFRACTORY_SECONDS,
+    BEAT_FLUX_DISPLAY_MAX,
 } from '../config.js';
 
 const BYTE_FLOOR_DB = -100;     // minDecibels: the bottom of the byte scale
@@ -66,6 +67,8 @@ class AudioAnalyzer {
 		this.rawDisplayCtx = null;
 		this.waveformDisplayCtx = null;
 		this.sAvgDisplayCtx = null;
+		this.beatDisplayCtx = null;
+		this.beatDisplayX = 0;
 		this.totalBarW = 40;
 		this.displayH = 100;
 		this.displayW = 250;
@@ -122,6 +125,17 @@ class AudioAnalyzer {
 			this.rawDisplayCtx.fillStyle = "rgb(40, 40, 40)";
 			this.rawDisplayCtx.lineWidth=2;
 			this.rawDisplayCtx.strokeStyle = "rgb(255, 255, 255)";
+
+			// the beat pane is optional: an older DOM without it still debugs fine
+			let beatCanvas = document.getElementById("audio-debug4");
+			if(beatCanvas){
+				beatCanvas.width = this.displayW;
+				beatCanvas.height = this.displayH;
+				this.beatDisplayCtx = beatCanvas.getContext('2d');
+				this.beatDisplayCtx.fillStyle = "rgb(40, 40, 40)";
+				this.beatDisplayCtx.lineWidth=2;
+				this.beatDisplayCtx.strokeStyle = "rgb(255, 255, 255)";
+			}
 
 			this.gradient = this.waveformDisplayCtx.createLinearGradient(0,0,0,this.displayH)
 			this.gradient.addColorStop(1,'#dddd00'); // 1
@@ -295,6 +309,45 @@ class AudioAnalyzer {
 			avgCtx.arc(beat.location * displayW, 24, 4 + beat.strength * 8, 0, Math.PI * 2);
 			avgCtx.fill();
 		}
+
+		this.debugDrawBeat();
+	}
+
+	// Scrolling plot of the beat detector: one column per drawn frame, with the
+	// frame's flux as a bar, its threshold as a 1 px mark and a detected beat as a
+	// full height white column. The tempo estimate sits in the top-left corner.
+	debugDrawBeat(){
+
+		const ctx = this.beatDisplayCtx;
+		if(!ctx) return;
+
+		const displayW = this.displayW;
+		const displayH = this.displayH;
+		const detector = this.beatDetector;
+		const x = this.beatDisplayX;
+		const scale = displayH / BEAT_FLUX_DISPLAY_MAX;
+
+		// clear this column and the gap ahead of it, so the oldest sample leaves as
+		// the plot wraps round
+		ctx.clearRect(x, 0, 2, displayH);
+
+		const fluxHeight = detector.isOnBeat
+			? displayH
+			: Math.min(detector.flux * scale, displayH);
+		ctx.fillStyle = detector.isOnBeat ? "#fff" : "#bbdd00";
+		ctx.fillRect(x, displayH - fluxHeight, 1, fluxHeight);
+
+		ctx.fillStyle = "#0f0";
+		ctx.fillRect(x, displayH - Math.min(detector.threshold * scale, displayH), 1, 1);
+
+		this.beatDisplayX = (x + 1) % displayW;
+
+		// redraw the label in place; the columns scroll underneath it
+		ctx.clearRect(0, 0, 70, 14);
+		ctx.fillStyle = "#ffdd00";
+		ctx.font = "12px monospace";
+		const bpm = detector.bpm;
+		ctx.fillText(bpm > 0 ? Math.round(bpm) + " BPM" : "-- BPM", 4, 12);
 	}
 
 }
